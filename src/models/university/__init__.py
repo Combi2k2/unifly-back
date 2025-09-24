@@ -28,7 +28,6 @@ from .uniProgram import (
 )
 from .uniPeople import (
     Person,
-    Staff,
     # String constants
     GENDER_MALE,
     GENDER_FEMALE,
@@ -110,7 +109,6 @@ __all__ = [
     
     # University schemas - people
     "Person",
-    "Staff",
     
     # University schemas - research
     "ResearchLab",
