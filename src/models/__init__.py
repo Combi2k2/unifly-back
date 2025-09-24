@@ -11,12 +11,8 @@ from .student import (
     ExtraCurricular,
     StandardizedTest
 )
-from .university import (
-    EduStats,
-    EduScore,
-    UniInfo
-)
-from .application import (
+from .university import *
+from .plan import (
     ApplicationTaskBase,
     ApplicationPlanBase
 )
@@ -34,11 +30,6 @@ __all__ = [
     "Award",
     "ExtraCurricular",
     "StandardizedTest",
-    
-    # University schemas
-    "EduStats",
-    "EduScore",
-    "UniInfo",
     
     # Application schemas
     "ApplicationTaskBase",
