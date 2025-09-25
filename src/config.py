@@ -1,0 +1,102 @@
+"""
+Configuration for Unifly Backend
+Configuration variables loaded from YAML files (dev/prod)
+"""
+
+import yaml
+import os
+from dotenv import load_dotenv
+from typing import Dict, Any
+
+# Load environment variables from .env file
+load_dotenv()
+
+def _load_config() -> Dict[str, Any]:
+    """Load configuration from YAML file based on environment variable"""
+    # Get environment from .env file, default to 'dev'
+    env = os.getenv('environment', 'dev')
+    config_file = f"config.{env}.yaml"
+    config_path = os.path.join(os.path.dirname(__file__), '..', 'config', config_file)
+    
+    try:
+        with open(config_path, 'r') as file:
+            return yaml.safe_load(file)
+    except FileNotFoundError:
+        raise FileNotFoundError(f"Configuration file not found: {config_path}")
+    except yaml.YAMLError as e:
+        raise ValueError(f"Error parsing YAML configuration: {e}")
+
+# Load configuration
+_config = _load_config()
+
+# =====================
+# Database Names (MongoDB)
+# =====================
+
+MONGODB_USER_BASE = _config['databases']['mongodb']['user_base']
+MONGODB_STUDENT_PROFILES    = _config['databases']['mongodb']['student_profiles']
+MONGODB_STUDENT_PREFERENCES = _config['databases']['mongodb']['student_preferences']
+MONGODB_ADVISOR_PROFILES    = _config['databases']['mongodb']['advisor_profiles']
+MONGODB_PARENT_PROFILES     = _config['databases']['mongodb']['parent_profiles']
+MONGODB_ADMIN_PROFILES      = _config['databases']['mongodb']['admin_profiles']
+
+MONGODB_UNIVERSITIES = _config['databases']['mongodb']['universities']
+MONGODB_UNIVERSITY_CAMPUSES     = _config['databases']['mongodb']['university_campuses']
+MONGODB_UNIVERSITY_PROGRAMS     = _config['databases']['mongodb']['university_programs']
+MONGODB_UNIVERSITY_PEOPLE       = _config['databases']['mongodb']['university_people']
+MONGODB_UNIVERSITY_RESEARCH     = _config['databases']['mongodb']['university_research']
+MONGODB_UNIVERSITY_SCHOLARSHIPS = _config['databases']['mongodb']['university_scholarships']
+
+MONGODB_PLANS = _config['databases']['mongodb']['plans']
+
+# =====================
+# Application Configuration
+# =====================
+
+APP_NAME        = _config['app']['name']
+APP_VERSION     = _config['app']['version']
+APP_ENVIRONMENT = _config['app']['environment']
+DEBUG = _config['app']['debug']
+LOG_LEVEL = _config['app']['log_level']
+
+# =====================
+# API Configuration
+# =====================
+
+API_HOST = _config['api']['host']
+API_PORT = _config['api']['port']
+CORS_ORIGINS    = _config['api']['cors_origins']
+RATE_LIMIT      = _config['api']['rate_limit']
+
+# =====================
+# Example Usage
+# =====================
+
+if __name__ == "__main__":
+    print("Unifly Backend Configuration")
+    print("=" * 40)
+    
+    print(f"\nEnvironment: {APP_ENVIRONMENT}")
+    print(f"App: {APP_NAME} v{APP_VERSION}")
+    print(f"Debug: {DEBUG}")
+    print(f"Log Level: {LOG_LEVEL}")
+    
+    print("\nAPI Configuration:")
+    print(f"  Host: {API_HOST}")
+    print(f"  Port: {API_PORT}")
+    print(f"  CORS Origins: {CORS_ORIGINS}")
+    
+    print("\nMongoDB Database Names:")
+    print(f"  user_base: {MONGODB_USER_BASE}")
+    print(f"  student_profiles: {MONGODB_STUDENT_PROFILES}")
+    print(f"  student_preferences: {MONGODB_STUDENT_PREFERENCES}")
+    print(f"  advisor_profiles: {MONGODB_ADVISOR_PROFILES}")
+    print(f"  parent_profiles: {MONGODB_PARENT_PROFILES}")
+    print(f"  admin_profiles: {MONGODB_ADMIN_PROFILES}")
+    print(f"  universities: {MONGODB_UNIVERSITIES}")
+    print(f"  university_campuses: {MONGODB_UNIVERSITY_CAMPUSES}")
+    print(f"  university_programs: {MONGODB_UNIVERSITY_PROGRAMS}")
+    print(f"  university_people: {MONGODB_UNIVERSITY_PEOPLE}")
+    print(f"  university_research: {MONGODB_UNIVERSITY_RESEARCH}")
+    print(f"  university_scholarships: {MONGODB_UNIVERSITY_SCHOLARSHIPS}")
+    print(f"  plans: {MONGODB_PLANS}")

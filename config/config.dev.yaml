@@ -1,0 +1,40 @@
+# Development Configuration for Unifly Backend
+
+# =====================
+# Databases Configuration
+# =====================
+databases:
+  mongodb:
+    # Database names for different model categories
+    user_base: "unifly_users"
+    student_profiles: "unifly_student_profiles"
+    student_preferences: "unifly_student_preferences"
+    advisor_profiles: "unifly_advisor_profiles"
+    parent_profiles: "unifly_parent_profiles"
+    admin_profiles: "unifly_admin_profiles"
+    universities: "unifly_universities"
+    university_campuses: "unifly_university_campuses"
+    university_programs: "unifly_university_programs"
+    university_people: "unifly_university_people"
+    university_research: "unifly_university_research"
+    university_scholarships: "unifly_university_scholarships"
+    plans: "unifly_plans"
+
+# =====================
+# Application Configuration
+# =====================
+app:
+  name: "Unifly Backend"
+  version: "1.0.0"
+  environment: "development"
+  debug: true
+  log_level: "INFO"
+
+# =====================
+# API Configuration
+# =====================
+api:
+  host: "0.0.0.0"
+  port: 8000
+  cors_origins: ["http://localhost:3000", "http://localhost:3001"]
+  rate_limit: "100/minute"
