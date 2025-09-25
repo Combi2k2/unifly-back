@@ -30,9 +30,14 @@ def _load_config() -> Dict[str, Any]:
 _config = _load_config()
 
 # =====================
-# Database Names (MongoDB)
+# Database Configuration (MongoDB)
 # =====================
 
+# MongoDB Connection String
+MONGODB_CONNECTION_STRING = os.getenv("MONGODB_CONNECTION_STRING", "mongodb://localhost:27017/")
+MONGODB_DATABASE_NAME = _config['databases']['mongodb']['database_name']
+
+# Database Names (MongoDB)
 MONGODB_USER_BASE = _config['databases']['mongodb']['user_base']
 MONGODB_STUDENT_PROFILES    = _config['databases']['mongodb']['student_profiles']
 MONGODB_STUDENT_PREFERENCES = _config['databases']['mongodb']['student_preferences']
@@ -41,6 +46,8 @@ MONGODB_PARENT_PROFILES     = _config['databases']['mongodb']['parent_profiles']
 MONGODB_ADMIN_PROFILES      = _config['databases']['mongodb']['admin_profiles']
 
 MONGODB_UNIVERSITIES = _config['databases']['mongodb']['universities']
+MONGODB_UNIVERSITY_FACULTIES    = _config['databases']['mongodb']['university_faculties']
+MONGODB_UNIVERSITY_DEPARTMENTS  = _config['databases']['mongodb']['university_departments']
 MONGODB_UNIVERSITY_CAMPUSES     = _config['databases']['mongodb']['university_campuses']
 MONGODB_UNIVERSITY_PROGRAMS     = _config['databases']['mongodb']['university_programs']
 MONGODB_UNIVERSITY_PEOPLE       = _config['databases']['mongodb']['university_people']
@@ -99,4 +106,6 @@ if __name__ == "__main__":
     print(f"  university_people: {MONGODB_UNIVERSITY_PEOPLE}")
     print(f"  university_research: {MONGODB_UNIVERSITY_RESEARCH}")
     print(f"  university_scholarships: {MONGODB_UNIVERSITY_SCHOLARSHIPS}")
+    print(f"  university_faculties: {MONGODB_UNIVERSITY_FACULTIES}")
+    print(f"  university_departments: {MONGODB_UNIVERSITY_DEPARTMENTS}")
     print(f"  plans: {MONGODB_PLANS}")
