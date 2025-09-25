@@ -1,20 +1,18 @@
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 from datetime import datetime
-from enum import Enum
 
+# User Role Constants
+USER_ROLE_STUDENT = "student"
+USER_ROLE_ADVISOR = "advisor"
+USER_ROLE_PARENT = "parent"
+USER_ROLE_ADMIN = "admin"
 
-class UserRole(str, Enum):
-    STUDENT = "student"
-    ADVISOR = "advisor"
-    PARENT = "parent"
-    ADMIN = "admin"
-
-class UserStatus(str, Enum):
-    ACTIVE = "active"
-    INACTIVE = "inactive"
-    SUSPENDED = "suspended"
-    PENDING_VERIFICATION = "pending_verification"
+# User Status Constants
+USER_STATUS_ACTIVE = "active"
+USER_STATUS_INACTIVE = "inactive"
+USER_STATUS_SUSPENDED = "suspended"
+USER_STATUS_VERIFYING = "verifying"
 
 # User Schemas
 class UserBase(BaseModel):
@@ -31,8 +29,8 @@ class UserBase(BaseModel):
     hashed_password: str
     
     # User Management
-    role: UserRole = UserRole.STUDENT
-    status: UserStatus = UserStatus.PENDING_VERIFICATION
+    role: str = USER_ROLE_STUDENT
+    status: str = USER_STATUS_VERIFYING
     
     # Profile Information
     profile_picture_url: Optional[str] = Field(None, max_length=500)
