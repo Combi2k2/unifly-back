@@ -20,4 +20,5 @@ class Person(BaseModel):
     date_of_birth: Optional[date] = None
     gender: Optional[str] = None
     contact: Optional[Contact] = None
+    about: Optional[str] = Field(None, max_length=8000)
     other: Optional[str] = Field(None, max_length=8000)

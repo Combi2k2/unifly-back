@@ -115,14 +115,17 @@ class Faculty(BaseModel):
     faculty_id: int
     university_id: int
     name: str = Field(..., min_length=1, max_length=255)
+    desc: Optional[str] = Field(None, max_length=8000)
     alias: Optional[str] = Field(None, max_length=50)
     other: Optional[str] = Field(None, max_length=8000)
     contact: Optional[Contact] = None
 
 class Department(BaseModel):
     department_id: int
+    university_id: int
     faculty_id: int
     name: str = Field(..., min_length=1, max_length=255)
+    desc: Optional[str] = Field(None, max_length=8000)
     alias: Optional[str] = Field(None, max_length=50)
     other: Optional[str] = Field(None, max_length=8000)
     contact: Optional[Contact] = None

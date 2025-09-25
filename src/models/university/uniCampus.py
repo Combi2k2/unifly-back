@@ -18,6 +18,7 @@ FACILITY_TYPE_ADMINISTRATIVE = "administrative"
 
 class Facility(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
+    desc: str = Field(..., min_length=1, max_length=8000)
     type: str
     capacity: Optional[int] = Field(None, ge=0)
     contact: Optional[Contact] = None
@@ -30,6 +31,7 @@ class Campus(BaseModel):
     campus_id: int
     university_id: int
     name: str = Field(..., min_length=1, max_length=255)
+    desc: str = Field(..., min_length=1, max_length=8000)
     facilities: List[Facility] = []
     location: Location
     contact: Optional[Contact] = None
