@@ -191,7 +191,7 @@ def get_one(collection: Collection, filters: Dict[str, Any] = {}) -> Optional[Di
         logger.error(f"Failed to get document with filters {filters} from {collection.name}: {e}")
         return None
 
-def get_many(collection: Collection, filters: Dict[str, Any] = {}, offset: int = 0, limit: int = 1) -> List[Dict[str, Any]]:
+def get_many(collection: Collection, filters: Dict[str, Any] = {}, offset: int = 0, limit: int = 0) -> List[Dict[str, Any]]:
     """
     Get multiple documents by attribute filters with pagination support
     
@@ -199,21 +199,15 @@ def get_many(collection: Collection, filters: Dict[str, Any] = {}, offset: int =
         collection: MongoDB collection instance
         filters: Dictionary of field-value pairs that returned documents must satisfy
         offset: Number of documents to skip (for pagination)
-        limit: Optional limit on number of documents to return
+        limit: Optional limit on number of documents to return. If limit is 0, all documents will be returned.
         
     Returns:
         List of document dictionaries
     """
     try:
         cursor = collection.find(filters)
-        
-        # Apply offset for pagination
-        if offset > 0:
-            cursor = cursor.skip(offset)
-        
-        # Apply limit if specified
-        if limit:
-            cursor = cursor.limit(limit)
+        cursor = cursor.skip(offset) if offset > 0 else cursor
+        cursor = cursor.limit(limit) if limit > 0 else cursor
         
         documents = []
         for doc in cursor:
@@ -255,46 +249,47 @@ def update(collection: Collection, filters: Dict[str, Any], data: Any) -> bool:
         logger.error(f"Failed to update document with filters {filters} in {collection.name}: {e}")
         return False
 
-def delete(collection: Collection, id: Any) -> bool:
+def delete(collection: Collection, filters: Dict[str, Any]) -> bool:
     """
-    Delete a document by its ID
+    Delete documents by filters
     
     Args:
         collection: MongoDB collection instance
-        id: ID of the document to delete
+        filters: Dictionary of field-value pairs that documents must satisfy
         
     Returns:
-        True if document was deleted, False otherwise
+        True if at least one document was deleted, False otherwise
     """
     try:
-        result = collection.delete_one({"_id": id})
+        result = collection.delete_one(filters)
         
         if result.deleted_count > 0:
-            logger.info(f"Deleted document with ID {id} from {collection.name}")
+            logger.info(f"Deleted document with filters {filters} from {collection.name}")
             return True
         else:
-            logger.warning(f"No document found with ID {id} in {collection.name}")
+            logger.warning(f"No document found with filters {filters} in {collection.name}")
             return False
     except Exception as e:
-        logger.error(f"Failed to delete document with ID {id} from {collection.name}: {e}")
+        logger.error(f"Failed to delete document with filters {filters} from {collection.name}: {e}")
         return False
 
-def count(collection: Collection) -> int:
+def count(collection: Collection, filters: Dict[str, Any] = {}) -> int:
     """
-    Count total number of documents in the collection
+    Count documents in the collection with optional filters
     
     Args:
         collection: MongoDB collection instance
+        filters: Dictionary of field-value pairs that documents must satisfy (optional)
         
     Returns:
-        Total count of documents
+        Count of documents matching the filters
     """
     try:
-        count = collection.count_documents({})
-        logger.info(f"Total documents in {collection.name}: {count}")
+        count = collection.count_documents(filters)
+        logger.info(f"Documents matching filters {filters} in {collection.name}: {count}")
         return count
     except Exception as e:
-        logger.error(f"Failed to count documents in {collection.name}: {e}")
+        logger.error(f"Failed to count documents with filters {filters} in {collection.name}: {e}")
         return 0
 
 if __name__ == "__main__":
