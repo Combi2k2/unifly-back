@@ -150,50 +150,50 @@ def reconnect_mongodb():
 # Base CRUD Operations
 # =====================
 
-def create(collection: Collection, obj: Any) -> Any:
+def insert(collection: Collection, obj: Any) -> Any:
     """
-    Create a new document in the collection
+    Insert a new document in the collection
     
     Args:
         collection: MongoDB collection instance
-        obj: Document to create (dict or object with model_dump method)
+        obj: Document to insert (dict or object with model_dump method)
         
     Returns:
-        ID of the created document
+        ID of the inserted document
     """
     try:
         document = obj.model_dump() if hasattr(obj, 'model_dump') else obj
         result = collection.insert_one(document)
-        logger.info(f"Created document in {collection.name} with ID: {result.inserted_id}")
+        logger.info(f"Inserted document in {collection.name} with ID: {result.inserted_id}")
         return result.inserted_id
     except Exception as e:
-        logger.error(f"Failed to create document in {collection.name}: {e}")
+        logger.error(f"Failed to insert document in {collection.name}: {e}")
         raise
 
-def read_one(collection: Collection, id: Any) -> Optional[Dict[str, Any]]:
+def get_one(collection: Collection, filters: Dict[str, Any] = {}) -> Optional[Dict[str, Any]]:
     """
-    Read a document by its ID
+    Get a document by filters
     
     Args:
         collection: MongoDB collection instance
-        id: ID of the document to read
+        filters: Dictionary of field-value pairs that the document must satisfy
         
     Returns:
         Document dict if found, None otherwise
     """
     try:
-        document = collection.find_one({"_id": id})
+        document = collection.find_one(filters)
         if document:
             document.pop("_id", None)  # Remove MongoDB's _id field
             return document
         return None
     except Exception as e:
-        logger.error(f"Failed to read document by ID {id} from {collection.name}: {e}")
+        logger.error(f"Failed to get document with filters {filters} from {collection.name}: {e}")
         return None
 
-def read_many(collection: Collection, filters: Dict[str, Any] = {}, offset: int = 0, limit: int = 1) -> List[Dict[str, Any]]:
+def get_many(collection: Collection, filters: Dict[str, Any] = {}, offset: int = 0, limit: int = 1) -> List[Dict[str, Any]]:
     """
-    Read multiple documents by attribute filters with pagination support
+    Get multiple documents by attribute filters with pagination support
     
     Args:
         collection: MongoDB collection instance
@@ -223,36 +223,36 @@ def read_many(collection: Collection, filters: Dict[str, Any] = {}, offset: int 
         logger.info(f"Retrieved {len(documents)} documents with filters {filters} from {collection.name} (offset: {offset}, limit: {limit})")
         return documents
     except Exception as e:
-        logger.error(f"Failed to read documents by filters {filters} from {collection.name}: {e}")
+        logger.error(f"Failed to get documents by filters {filters} from {collection.name}: {e}")
         return []
 
-def update(collection: Collection, id: Any, obj: Any) -> bool:
+def update(collection: Collection, filters: Dict[str, Any], data: Any) -> bool:
     """
-    Update a document by its ID
+    Update documents by filters
     
     Args:
         collection: MongoDB collection instance
-        id: ID of the document to update
-        obj: Updated document (dict or object with model_dump method)
+        filters: Dictionary of field-value pairs that documents must satisfy
+        data: Updated document data (dict or object with model_dump method)
         
     Returns:
         True if document was updated, False otherwise
     """
     try:
-        document = obj.model_dump() if hasattr(obj, 'model_dump') else obj
+        document = data.model_dump() if hasattr(data, 'model_dump') else data
         result = collection.update_one(
-            {"_id": id},
+            filters,
             {"$set": document}
         )
         
         if result.modified_count > 0:
-            logger.info(f"Updated document with ID {id} in {collection.name}")
+            logger.info(f"Updated document with filters {filters} in {collection.name}")
             return True
         else:
-            logger.warning(f"No document found with ID {id} in {collection.name}")
+            logger.warning(f"No document found with filters {filters} in {collection.name}")
             return False
     except Exception as e:
-        logger.error(f"Failed to update document with ID {id} in {collection.name}: {e}")
+        logger.error(f"Failed to update document with filters {filters} in {collection.name}: {e}")
         return False
 
 def delete(collection: Collection, id: Any) -> bool:
