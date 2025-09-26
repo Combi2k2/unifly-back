@@ -20,9 +20,9 @@ from src.integrations.internal.mongodb import (
     close_mongodb_connection,
     check_mongodb_connection,
     reconnect_mongodb,
-    create,
-    read_one,
-    read_many,
+    insert,
+    get_one,
+    get_many,
     update,
     delete,
     count
@@ -212,8 +212,8 @@ class TestCRUDOperations:
         self.mock_collection = Mock(spec=Collection)
         self.mock_collection.name = "test_collection"
     
-    def test_create_success(self):
-        """Test successful document creation"""
+    def test_insert_success(self):
+        """Test successful document insertion"""
         # Mock collection response
         mock_result = Mock()
         mock_result.inserted_id = "test_id_123"
@@ -222,15 +222,15 @@ class TestCRUDOperations:
         # Test data
         test_data = {"name": "Test Document", "value": 42}
         
-        # Test create operation
-        result = create(self.mock_collection, test_data)
+        # Test insert operation
+        result = insert(self.mock_collection, test_data)
         
         # Assertions
         assert result == "test_id_123"
         self.mock_collection.insert_one.assert_called_once_with(test_data)
     
-    def test_create_with_pydantic_model(self):
-        """Test document creation with Pydantic model"""
+    def test_insert_with_pydantic_model(self):
+        """Test document insertion with Pydantic model"""
         # Mock Pydantic model
         mock_model = Mock()
         mock_model.model_dump.return_value = {"name": "Test", "id": 1}
@@ -240,16 +240,16 @@ class TestCRUDOperations:
         mock_result.inserted_id = "test_id_456"
         self.mock_collection.insert_one.return_value = mock_result
         
-        # Test create operation
-        result = create(self.mock_collection, mock_model)
+        # Test insert operation
+        result = insert(self.mock_collection, mock_model)
         
         # Assertions
         assert result == "test_id_456"
         mock_model.model_dump.assert_called_once()
         self.mock_collection.insert_one.assert_called_once_with({"name": "Test", "id": 1})
     
-    def test_create_failure(self):
-        """Test document creation failure"""
+    def test_insert_failure(self):
+        """Test document insertion failure"""
         # Mock collection failure
         self.mock_collection.insert_one.side_effect = Exception("Insert failed")
         
@@ -258,47 +258,50 @@ class TestCRUDOperations:
         
         # Test that exception is raised
         with pytest.raises(Exception, match="Insert failed"):
-            create(self.mock_collection, test_data)
+            insert(self.mock_collection, test_data)
     
-    def test_read_one_success(self):
-        """Test successful document read by ID"""
+    def test_get_one_success(self):
+        """Test successful document get by filters"""
         # Mock collection response
         mock_document = {"_id": "test_id", "name": "Test Document", "value": 42}
         self.mock_collection.find_one.return_value = mock_document
         
-        # Test read operation
-        result = read_one(self.mock_collection, "test_id")
+        # Test get operation
+        filters = {"_id": "test_id"}
+        result = get_one(self.mock_collection, filters)
         
         # Assertions
         expected = {"name": "Test Document", "value": 42}  # _id removed
         assert result == expected
-        self.mock_collection.find_one.assert_called_once_with({"_id": "test_id"})
+        self.mock_collection.find_one.assert_called_once_with(filters)
     
-    def test_read_one_not_found(self):
-        """Test document read when not found"""
+    def test_get_one_not_found(self):
+        """Test document get when not found"""
         # Mock collection response
         self.mock_collection.find_one.return_value = None
         
-        # Test read operation
-        result = read_one(self.mock_collection, "nonexistent_id")
+        # Test get operation
+        filters = {"_id": "nonexistent_id"}
+        result = get_one(self.mock_collection, filters)
         
         # Assertions
         assert result is None
-        self.mock_collection.find_one.assert_called_once_with({"_id": "nonexistent_id"})
+        self.mock_collection.find_one.assert_called_once_with(filters)
     
-    def test_read_one_failure(self):
-        """Test document read failure"""
+    def test_get_one_failure(self):
+        """Test document get failure"""
         # Mock collection failure
         self.mock_collection.find_one.side_effect = Exception("Find failed")
         
-        # Test read operation
-        result = read_one(self.mock_collection, "test_id")
+        # Test get operation
+        filters = {"_id": "test_id"}
+        result = get_one(self.mock_collection, filters)
         
         # Assertions
         assert result is None
     
-    def test_read_many_success(self):
-        """Test successful multiple document read"""
+    def test_get_many_success(self):
+        """Test successful multiple document get"""
         # Mock collection response
         mock_documents = [
             {"_id": "id1", "name": "Doc1", "value": 1},
@@ -311,9 +314,9 @@ class TestCRUDOperations:
         mock_cursor.__iter__ = Mock(return_value=iter(mock_documents))
         self.mock_collection.find.return_value = mock_cursor
         
-        # Test read operation
+        # Test get operation
         filters = {"status": "active"}
-        result = read_many(self.mock_collection, filters, offset=0, limit=10)
+        result = get_many(self.mock_collection, filters, offset=0, limit=10)
         
         # Assertions
         expected = [
@@ -326,8 +329,8 @@ class TestCRUDOperations:
         mock_cursor.skip.assert_not_called()
         mock_cursor.limit.assert_called_once_with(10)
     
-    def test_read_many_no_offset(self):
-        """Test read many without offset"""
+    def test_get_many_no_offset(self):
+        """Test get many without offset"""
         # Mock collection response
         mock_documents = [{"_id": "id1", "name": "Doc1"}]
         mock_cursor = Mock()
@@ -335,8 +338,8 @@ class TestCRUDOperations:
         mock_cursor.__iter__ = Mock(return_value=iter(mock_documents))
         self.mock_collection.find.return_value = mock_cursor
         
-        # Test read operation
-        result = read_many(self.mock_collection, {}, offset=0, limit=5)
+        # Test get operation
+        result = get_many(self.mock_collection, {}, offset=0, limit=5)
         
         # Assertions
         expected = [{"name": "Doc1"}]  # _id removed
@@ -344,13 +347,13 @@ class TestCRUDOperations:
         mock_cursor.skip.assert_not_called()
         mock_cursor.limit.assert_called_once_with(5)
     
-    def test_read_many_failure(self):
-        """Test read many failure"""
+    def test_get_many_failure(self):
+        """Test get many failure"""
         # Mock collection failure
         self.mock_collection.find.side_effect = Exception("Find failed")
         
-        # Test read operation
-        result = read_many(self.mock_collection, {}, offset=0, limit=10)
+        # Test get operation
+        result = get_many(self.mock_collection, {}, offset=0, limit=10)
         
         # Assertions
         assert result == []
@@ -364,14 +367,15 @@ class TestCRUDOperations:
         
         # Test data
         test_data = {"name": "Updated Document", "value": 100}
+        filters = {"_id": "test_id"}
         
         # Test update operation
-        result = update(self.mock_collection, "test_id", test_data)
+        result = update(self.mock_collection, filters, test_data)
         
         # Assertions
         assert result is True
         self.mock_collection.update_one.assert_called_once_with(
-            {"_id": "test_id"},
+            filters,
             {"$set": test_data}
         )
     
@@ -387,13 +391,14 @@ class TestCRUDOperations:
         self.mock_collection.update_one.return_value = mock_result
         
         # Test update operation
-        result = update(self.mock_collection, "test_id", mock_model)
+        filters = {"_id": "test_id"}
+        result = update(self.mock_collection, filters, mock_model)
         
         # Assertions
         assert result is True
         mock_model.model_dump.assert_called_once()
         self.mock_collection.update_one.assert_called_once_with(
-            {"_id": "test_id"},
+            filters,
             {"$set": {"name": "Updated", "id": 1}}
         )
     
@@ -406,9 +411,10 @@ class TestCRUDOperations:
         
         # Test data
         test_data = {"name": "Updated Document"}
+        filters = {"_id": "nonexistent_id"}
         
         # Test update operation
-        result = update(self.mock_collection, "nonexistent_id", test_data)
+        result = update(self.mock_collection, filters, test_data)
         
         # Assertions
         assert result is False
@@ -420,9 +426,10 @@ class TestCRUDOperations:
         
         # Test data
         test_data = {"name": "Updated Document"}
+        filters = {"_id": "test_id"}
         
         # Test update operation
-        result = update(self.mock_collection, "test_id", test_data)
+        result = update(self.mock_collection, filters, test_data)
         
         # Assertions
         assert result is False
@@ -521,17 +528,17 @@ class TestIntegration:
         # Test workflow
         test_data = {"name": "Test Document", "value": 42}
         
-        # Create
-        doc_id = create(mock_collection, test_data)
+        # Insert
+        doc_id = insert(mock_collection, test_data)
         assert doc_id == "test_id_123"
         
-        # Read
-        doc = read_one(mock_collection, doc_id)
+        # Get
+        doc = get_one(mock_collection, {"_id": doc_id})
         assert doc == {"name": "Test Document", "value": 42}
         
         # Update
         updated_data = {"name": "Updated Document", "value": 100}
-        update_success = update(mock_collection, doc_id, updated_data)
+        update_success = update(mock_collection, {"_id": doc_id}, updated_data)
         assert update_success is True
         
         # Count
