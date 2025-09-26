@@ -6,7 +6,7 @@
 databases:
   mongodb:
     database_name: "unifly_dev"
-    # Database names for different model categories
+    # Collection names for different model categories
     user_base: "unifly_users"
     student_profiles: "unifly_student_profiles"
     student_preferences: "unifly_student_preferences"
@@ -22,6 +22,17 @@ databases:
     university_faculties: "unifly_university_faculties"
     university_departments: "unifly_university_departments"
     plans: "unifly_plans"
+  
+  qdrant:
+    # Collection names for relevant models
+    universities: "unifly_universities"
+    university_campuses: "unifly_university_campuses"
+    university_programs: "unifly_university_programs"
+    university_people: "unifly_university_people"
+    university_research: "unifly_university_research"
+    university_scholarships: "unifly_university_scholarships"
+    university_faculties: "unifly_university_faculties"
+    university_departments: "unifly_university_departments"
 
 # =====================
 # Application Configuration
