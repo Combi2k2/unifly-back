@@ -58,10 +58,7 @@ def get_user_by_id(userid: int) -> Optional[UserBase]:
     try:
         collection = get_users_collection()
         result = get_one(collection, {"userid": userid})
-        if result:
-            result.pop("_id", None)
-            result = UserBase(**result)
-        
+        result = UserBase(**result) if result else None
         return result
     except Exception as e:
         logger.error(f"Error getting user by ID {userid}: {e}")
@@ -80,10 +77,7 @@ def get_user_by_email(email: str) -> Optional[UserBase]:
     try:
         collection = get_users_collection()
         result = get_one(collection, {"email": email})
-        if result:
-            result.pop("_id", None)
-            result = UserBase(**result)
-        
+        result = UserBase(**result) if result else None
         return result
     except Exception as e:
         logger.error(f"Error getting user by email {email}: {e}")
@@ -104,12 +98,8 @@ def get_users_by_role(role: str, offset: int = 0, limit: int = 100) -> List[User
     try:
         collection = get_users_collection()
         results = get_many(collection, {"role": role}, offset=offset, limit=limit)
-        user_objects = []
-        for result in results:
-            result.pop("_id", None)
-            user_objects.append(UserBase(**result))
-        
-        return user_objects
+        results = [UserBase(**result) for result in results]
+        return results
     except Exception as e:
         logger.error(f"Error getting users by role {role}: {e}")
         return []
@@ -129,12 +119,8 @@ def get_users_by_status(status: str, offset: int = 0, limit: int = 100) -> List[
     try:
         collection = get_users_collection()
         results = get_many(collection, {"status": status}, offset=offset, limit=limit)
-        user_objects = []
-        for result in results:
-            result.pop("_id", None)
-            user_objects.append(UserBase(**result))
-        
-        return user_objects
+        results = [UserBase(**result) for result in results]
+        return results
     except Exception as e:
         logger.error(f"Error getting users by status {status}: {e}")
         return []
@@ -153,12 +139,8 @@ def get_all_users(offset: int = 0, limit: int = 100) -> List[UserBase]:
     try:
         collection = get_users_collection()
         results = get_many(collection, {}, offset=offset, limit=limit)
-        user_objects = []
-        for result in results:
-            result.pop("_id", None)
-            user_objects.append(UserBase(**result))
-        
-        return user_objects
+        results = [UserBase(**result) for result in results]
+        return results
     except Exception as e:
         logger.error(f"Error getting all users: {e}")
         return []
