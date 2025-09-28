@@ -75,6 +75,38 @@ QDRANT_UNIVERSITY_RESEARCH     = _config['databases']['qdrant']['university_rese
 QDRANT_UNIVERSITY_SCHOLARSHIPS = _config['databases']['qdrant']['university_scholarships']
 
 # =====================
+# LangChain Configuration
+# =====================
+
+# Load embedding configuration
+_embedding_config = _config['langchain']['embedding'].copy()
+_embedding_secret = _embedding_config.pop('secret', {})
+
+for k, v in _embedding_secret.items():
+    _embedding_config[k] = os.getenv(v)
+
+# Embedding Configuration
+LANGCHAIN_EMBEDDING_PROVIDER    = _embedding_config.pop('provider')
+LANGCHAIN_EMBEDDING_MODEL       = _embedding_config.pop('model')
+LANGCHAIN_EMBEDDING_SIZE        = _embedding_config.pop('size')
+LANGCHAIN_EMBEDDING_KWARGS      = _embedding_config
+
+# LLM Configuration
+_llm_config = _config['langchain']['llm'].copy()
+_llm_secret = _llm_config.pop('secret', {})
+
+for k, v in _llm_secret.items():
+    _llm_config[k] = os.getenv(v)
+
+LANGCHAIN_LLM_PROVIDER    = _llm_config.pop('provider')
+LANGCHAIN_LLM_MODEL       = _llm_config.pop('model')
+LANGCHAIN_LLM_KWARGS      = _llm_config
+
+# Chunk Configuration
+LANGCHAIN_CHUNK_SIZE    = _config['langchain']['chunk']['chunk_size']
+LANGCHAIN_CHUNK_OVERLAP = _config['langchain']['chunk']['chunk_overlap']
+
+# =====================
 # Application Configuration
 # =====================
 
@@ -141,3 +173,13 @@ if __name__ == "__main__":
     print(f"  university_scholarships: {QDRANT_UNIVERSITY_SCHOLARSHIPS}")
     print(f"  university_faculties: {QDRANT_UNIVERSITY_FACULTIES}")
     print(f"  university_departments: {QDRANT_UNIVERSITY_DEPARTMENTS}")
+    
+    print("\nLangChain Configuration:")
+    print(f"  Embedding Provider: {LANGCHAIN_EMBEDDING_PROVIDER}")
+    print(f"  Embedding Model: {LANGCHAIN_EMBEDDING_MODEL}")
+    print(f"  Embedding Kwargs: {LANGCHAIN_EMBEDDING_KWARGS}")
+    print(f"  LLM Provider: {LANGCHAIN_LLM_PROVIDER}")
+    print(f"  LLM Model: {LANGCHAIN_LLM_MODEL}")
+    print(f"  LLM Kwargs: {LANGCHAIN_LLM_KWARGS}")
+    print(f"  Chunk Size: {LANGCHAIN_CHUNK_SIZE}")
+    print(f"  Chunk Overlap: {LANGCHAIN_CHUNK_OVERLAP}")
