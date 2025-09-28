@@ -14,7 +14,8 @@ GENDER_OTHER = "other"
 GENDER_PREFER_NOT_TO_SAY = "prefer_not_to_say"
 
 class Person(BaseModel):
-    person_id: Optional[int] = None
+    person_id: int
+    university_id: int
     first_name: Optional[str] = Field(None, max_length=100)
     last_name: Optional[str] = Field(None, max_length=100)
     date_of_birth: Optional[date] = None
