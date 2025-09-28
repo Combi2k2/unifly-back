@@ -165,7 +165,7 @@ def insert(collection: Collection, obj: Any) -> Any:
         document = obj.model_dump() if hasattr(obj, 'model_dump') else obj
         result = collection.insert_one(document)
         logger.info(f"Inserted document in {collection.name} with ID: {result.inserted_id}")
-        return result.inserted_id
+        return result
     except Exception as e:
         logger.error(f"Failed to insert document in {collection.name}: {e}")
         raise
@@ -189,7 +189,7 @@ def get_one(collection: Collection, filters: Dict[str, Any] = {}) -> Optional[Di
         return None
     except Exception as e:
         logger.error(f"Failed to get document with filters {filters} from {collection.name}: {e}")
-        return None
+        raise
 
 def get_many(collection: Collection, filters: Dict[str, Any] = {}, offset: int = 0, limit: int = 0) -> List[Dict[str, Any]]:
     """
@@ -218,7 +218,7 @@ def get_many(collection: Collection, filters: Dict[str, Any] = {}, offset: int =
         return documents
     except Exception as e:
         logger.error(f"Failed to get documents by filters {filters} from {collection.name}: {e}")
-        return []
+        raise
 
 def update(collection: Collection, filters: Dict[str, Any], data: Any) -> bool:
     """
@@ -241,13 +241,13 @@ def update(collection: Collection, filters: Dict[str, Any], data: Any) -> bool:
         
         if result.modified_count > 0:
             logger.info(f"Updated document with filters {filters} in {collection.name}")
-            return True
         else:
             logger.warning(f"No document found with filters {filters} in {collection.name}")
-            return False
+        
+        return result
     except Exception as e:
         logger.error(f"Failed to update document with filters {filters} in {collection.name}: {e}")
-        return False
+        raise
 
 def delete(collection: Collection, filters: Dict[str, Any]) -> bool:
     """
@@ -265,13 +265,12 @@ def delete(collection: Collection, filters: Dict[str, Any]) -> bool:
         
         if result.deleted_count > 0:
             logger.info(f"Deleted document with filters {filters} from {collection.name}")
-            return True
         else:
             logger.warning(f"No document found with filters {filters} in {collection.name}")
-            return False
+        return result
     except Exception as e:
         logger.error(f"Failed to delete document with filters {filters} from {collection.name}: {e}")
-        return False
+        raise
 
 def count(collection: Collection, filters: Dict[str, Any] = {}) -> int:
     """
@@ -290,7 +289,7 @@ def count(collection: Collection, filters: Dict[str, Any] = {}) -> int:
         return count
     except Exception as e:
         logger.error(f"Failed to count documents with filters {filters} in {collection.name}: {e}")
-        return 0
+        raise
 
 if __name__ == "__main__":
     print("MongoDB Client Initialization Test")

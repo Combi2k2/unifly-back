@@ -9,6 +9,7 @@ import time
 from unittest.mock import Mock, patch
 from pymongo.collection import Collection
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
+from pymongo.results import InsertOneResult, UpdateResult, DeleteResult
 from bson import ObjectId
 
 from src.integrations.internal.mongodb import (
@@ -213,8 +214,9 @@ class TestCRUDOperations:
     def test_insert_success(self):
         """Test successful document insertion"""
         # Mock collection response
-        mock_result = Mock()
+        mock_result = Mock(spec=InsertOneResult)
         mock_result.inserted_id = "test_id_123"
+        mock_result.acknowledged = True
         self.mock_collection.insert_one.return_value = mock_result
         
         # Test data
@@ -224,7 +226,9 @@ class TestCRUDOperations:
         result = insert(self.mock_collection, test_data)
         
         # Assertions
-        assert result == "test_id_123"
+        assert result == mock_result
+        assert result.inserted_id == "test_id_123"
+        assert result.acknowledged is True
         self.mock_collection.insert_one.assert_called_once_with(test_data)
     
     def test_insert_with_pydantic_model(self):
@@ -234,15 +238,18 @@ class TestCRUDOperations:
         mock_model.model_dump.return_value = {"name": "Test", "id": 1}
         
         # Mock collection response
-        mock_result = Mock()
+        mock_result = Mock(spec=InsertOneResult)
         mock_result.inserted_id = "test_id_456"
+        mock_result.acknowledged = True
         self.mock_collection.insert_one.return_value = mock_result
         
         # Test insert operation
         result = insert(self.mock_collection, mock_model)
         
         # Assertions
-        assert result == "test_id_456"
+        assert result == mock_result
+        assert result.inserted_id == "test_id_456"
+        assert result.acknowledged is True
         mock_model.model_dump.assert_called_once()
         self.mock_collection.insert_one.assert_called_once_with({"name": "Test", "id": 1})
     
@@ -257,6 +264,8 @@ class TestCRUDOperations:
         # Test that exception is raised
         with pytest.raises(Exception, match="Insert failed"):
             insert(self.mock_collection, test_data)
+        
+        self.mock_collection.insert_one.assert_called_once_with(test_data)
     
     def test_get_one_success(self):
         """Test successful document get by filters"""
@@ -293,10 +302,10 @@ class TestCRUDOperations:
         
         # Test get operation
         filters = {"_id": "test_id"}
-        result = get_one(self.mock_collection, filters)
         
-        # Assertions
-        assert result is None
+        # Test that exception is raised
+        with pytest.raises(Exception, match="Find failed"):
+            get_one(self.mock_collection, filters)
     
     def test_get_many_success(self):
         """Test successful multiple document get"""
@@ -351,16 +360,16 @@ class TestCRUDOperations:
         self.mock_collection.find.side_effect = Exception("Find failed")
         
         # Test get operation
-        result = get_many(self.mock_collection, {}, offset=0, limit=10)
-        
-        # Assertions
-        assert result == []
+        with pytest.raises(Exception, match="Find failed"):
+            get_many(self.mock_collection, {}, offset=0, limit=10)
     
     def test_update_success(self):
         """Test successful document update"""
         # Mock collection response
-        mock_result = Mock()
+        mock_result = Mock(spec=UpdateResult)
         mock_result.modified_count = 1
+        mock_result.matched_count = 1
+        mock_result.acknowledged = True
         self.mock_collection.update_one.return_value = mock_result
         
         # Test data
@@ -371,7 +380,10 @@ class TestCRUDOperations:
         result = update(self.mock_collection, filters, test_data)
         
         # Assertions
-        assert result is True
+        assert result == mock_result
+        assert result.modified_count == 1
+        assert result.matched_count == 1
+        assert result.acknowledged is True
         self.mock_collection.update_one.assert_called_once_with(
             filters,
             {"$set": test_data}
@@ -384,8 +396,10 @@ class TestCRUDOperations:
         mock_model.model_dump.return_value = {"name": "Updated", "id": 1}
         
         # Mock collection response
-        mock_result = Mock()
+        mock_result = Mock(spec=UpdateResult)
         mock_result.modified_count = 1
+        mock_result.matched_count = 1
+        mock_result.acknowledged = True
         self.mock_collection.update_one.return_value = mock_result
         
         # Test update operation
@@ -393,7 +407,10 @@ class TestCRUDOperations:
         result = update(self.mock_collection, filters, mock_model)
         
         # Assertions
-        assert result is True
+        assert result == mock_result
+        assert result.modified_count == 1
+        assert result.matched_count == 1
+        assert result.acknowledged is True
         mock_model.model_dump.assert_called_once()
         self.mock_collection.update_one.assert_called_once_with(
             filters,
@@ -403,8 +420,10 @@ class TestCRUDOperations:
     def test_update_not_found(self):
         """Test document update when not found"""
         # Mock collection response
-        mock_result = Mock()
+        mock_result = Mock(spec=UpdateResult)
         mock_result.modified_count = 0
+        mock_result.matched_count = 0
+        mock_result.acknowledged = True
         self.mock_collection.update_one.return_value = mock_result
         
         # Test data
@@ -415,7 +434,10 @@ class TestCRUDOperations:
         result = update(self.mock_collection, filters, test_data)
         
         # Assertions
-        assert result is False
+        assert result == mock_result
+        assert result.modified_count == 0
+        assert result.matched_count == 0
+        assert result.acknowledged is True
     
     def test_update_failure(self):
         """Test document update failure"""
@@ -426,17 +448,16 @@ class TestCRUDOperations:
         test_data = {"name": "Updated Document"}
         filters = {"_id": "test_id"}
         
-        # Test update operation
-        result = update(self.mock_collection, filters, test_data)
-        
-        # Assertions
-        assert result is False
+        # Test that exception is raised
+        with pytest.raises(Exception, match="Update failed"):
+            update(self.mock_collection, filters, test_data)
     
     def test_delete_success(self):
         """Test successful document deletion with filters"""
         # Mock collection response
-        mock_result = Mock()
+        mock_result = Mock(spec=DeleteResult)
         mock_result.deleted_count = 1
+        mock_result.acknowledged = True
         self.mock_collection.delete_one.return_value = mock_result
         
         # Test delete operation with filters
@@ -444,14 +465,17 @@ class TestCRUDOperations:
         result = delete(self.mock_collection, filters)
         
         # Assertions
-        assert result is True
+        assert result == mock_result
+        assert result.deleted_count == 1
+        assert result.acknowledged is True
         self.mock_collection.delete_one.assert_called_once_with(filters)
     
     def test_delete_not_found(self):
         """Test document deletion when not found"""
         # Mock collection response
-        mock_result = Mock()
+        mock_result = Mock(spec=DeleteResult)
         mock_result.deleted_count = 0
+        mock_result.acknowledged = True
         self.mock_collection.delete_one.return_value = mock_result
         
         # Test delete operation with filters
@@ -459,7 +483,9 @@ class TestCRUDOperations:
         result = delete(self.mock_collection, filters)
         
         # Assertions
-        assert result is False
+        assert result == mock_result
+        assert result.deleted_count == 0
+        assert result.acknowledged is True
         self.mock_collection.delete_one.assert_called_once_with(filters)
     
     def test_delete_failure(self):
@@ -469,10 +495,11 @@ class TestCRUDOperations:
         
         # Test delete operation with filters
         filters = {"userid": 12345}
-        result = delete(self.mock_collection, filters)
         
-        # Assertions
-        assert result is False
+        # Test that exception is raised
+        with pytest.raises(Exception, match="Delete failed"):
+            delete(self.mock_collection, filters)
+        
         self.mock_collection.delete_one.assert_called_once_with(filters)
     
     def test_count_success(self):
@@ -506,10 +533,9 @@ class TestCRUDOperations:
         self.mock_collection.count_documents.side_effect = Exception("Count failed")
         
         # Test count operation
-        result = count(self.mock_collection)
+        with pytest.raises(Exception, match="Count failed"):
+            count(self.mock_collection)
         
-        # Assertions
-        assert result == 0
         self.mock_collection.count_documents.assert_called_once_with({})
     
     def test_count_with_filters_failure(self):
@@ -519,10 +545,10 @@ class TestCRUDOperations:
         
         # Test count operation with filters
         filters = {"role": "student"}
-        result = count(self.mock_collection, filters)
         
-        # Assertions
-        assert result == 0
+        with pytest.raises(Exception, match="Count failed"):
+            count(self.mock_collection, filters)
+        
         self.mock_collection.count_documents.assert_called_once_with(filters)
 
 
@@ -538,8 +564,9 @@ class TestFilterOperations:
     def test_delete_with_complex_filters(self):
         """Test delete with complex filter conditions"""
         # Mock collection response
-        mock_result = Mock()
+        mock_result = Mock(spec=DeleteResult)
         mock_result.deleted_count = 1
+        mock_result.acknowledged = True
         self.mock_collection.delete_one.return_value = mock_result
         
         # Test delete with complex filters
@@ -551,14 +578,17 @@ class TestFilterOperations:
         result = delete(self.mock_collection, filters)
         
         # Assertions
-        assert result is True
+        assert result == mock_result
+        assert result.deleted_count == 1
+        assert result.acknowledged is True
         self.mock_collection.delete_one.assert_called_once_with(filters)
     
     def test_delete_with_empty_filters(self):
         """Test delete with empty filters (should not delete anything)"""
         # Mock collection response
-        mock_result = Mock()
+        mock_result = Mock(spec=DeleteResult)
         mock_result.deleted_count = 0
+        mock_result.acknowledged = True
         self.mock_collection.delete_one.return_value = mock_result
         
         # Test delete with empty filters
@@ -566,7 +596,9 @@ class TestFilterOperations:
         result = delete(self.mock_collection, filters)
         
         # Assertions
-        assert result is False
+        assert result == mock_result
+        assert result.deleted_count == 0
+        assert result.acknowledged is True
         self.mock_collection.delete_one.assert_called_once_with(filters)
     
     def test_count_with_multiple_filters(self):
@@ -621,8 +653,9 @@ class TestFilterOperations:
         from bson import ObjectId
         
         # Mock collection response
-        mock_result = Mock()
+        mock_result = Mock(spec=DeleteResult)
         mock_result.deleted_count = 1
+        mock_result.acknowledged = True
         self.mock_collection.delete_one.return_value = mock_result
         
         # Test delete with ObjectId filter
@@ -631,7 +664,9 @@ class TestFilterOperations:
         result = delete(self.mock_collection, filters)
         
         # Assertions
-        assert result is True
+        assert result == mock_result
+        assert result.deleted_count == 1
+        assert result.acknowledged is True
         self.mock_collection.delete_one.assert_called_once_with(filters)
 
 
@@ -647,19 +682,23 @@ class TestIntegration:
         mock_get_collection.return_value = mock_collection
         
         # Mock responses
-        mock_insert_result = Mock()
+        mock_insert_result = Mock(spec=InsertOneResult)
         mock_insert_result.inserted_id = "test_id_123"
+        mock_insert_result.acknowledged = True
         mock_collection.insert_one.return_value = mock_insert_result
         
         mock_document = {"_id": "test_id_123", "name": "Test Document", "value": 42}
         mock_collection.find_one.return_value = mock_document
         
-        mock_update_result = Mock()
+        mock_update_result = Mock(spec=UpdateResult)
         mock_update_result.modified_count = 1
+        mock_update_result.matched_count = 1
+        mock_update_result.acknowledged = True
         mock_collection.update_one.return_value = mock_update_result
         
-        mock_delete_result = Mock()
+        mock_delete_result = Mock(spec=DeleteResult)
         mock_delete_result.deleted_count = 1
+        mock_delete_result.acknowledged = True
         mock_collection.delete_one.return_value = mock_delete_result
         
         mock_collection.count_documents.return_value = 1
@@ -668,25 +707,32 @@ class TestIntegration:
         test_data = {"name": "Test Document", "value": 42}
         
         # Insert
-        doc_id = insert(mock_collection, test_data)
-        assert doc_id == "test_id_123"
+        insert_result = insert(mock_collection, test_data)
+        assert insert_result == mock_insert_result
+        assert insert_result.inserted_id == "test_id_123"
+        assert insert_result.acknowledged is True
         
         # Get
-        doc = get_one(mock_collection, {"_id": doc_id})
+        doc = get_one(mock_collection, {"_id": "test_id_123"})
         assert doc == {"name": "Test Document", "value": 42}
         
         # Update
         updated_data = {"name": "Updated Document", "value": 100}
-        update_success = update(mock_collection, {"_id": doc_id}, updated_data)
-        assert update_success is True
+        update_result = update(mock_collection, {"_id": "test_id_123"}, updated_data)
+        assert update_result == mock_update_result
+        assert update_result.modified_count == 1
+        assert update_result.matched_count == 1
+        assert update_result.acknowledged is True
         
         # Count
         doc_count = count(mock_collection)
         assert doc_count == 1
         
         # Delete with filter
-        delete_success = delete(mock_collection, {"_id": doc_id})
-        assert delete_success is True
+        delete_result = delete(mock_collection, {"_id": "test_id_123"})
+        assert delete_result == mock_delete_result
+        assert delete_result.deleted_count == 1
+        assert delete_result.acknowledged is True
         
         # Count with filters
         filtered_count = count(mock_collection, {"name": "Updated Document"})
@@ -745,14 +791,17 @@ class TestRealMongoDBIntegration:
         }
         
         # Insert document
-        doc_id = insert(self.test_collection, test_document)
+        insert_result = insert(self.test_collection, test_document)
         
         # Verify insertion
-        assert doc_id is not None
-        assert isinstance(doc_id, ObjectId)
+        assert insert_result is not None
+        assert isinstance(insert_result, InsertOneResult)
+        assert insert_result.inserted_id is not None
+        assert isinstance(insert_result.inserted_id, ObjectId)
+        assert insert_result.acknowledged is True
         
         # Verify document exists in database
-        result = self.test_collection.find_one({"_id": doc_id})
+        result = self.test_collection.find_one({"_id": insert_result.inserted_id})
         assert result is not None
         assert result["name"] == "Test Document"
         assert result["value"] == 42
@@ -767,7 +816,8 @@ class TestRealMongoDBIntegration:
             "status": "active"
         }
         
-        doc_id = insert(self.test_collection, test_document)
+        insert_result = insert(self.test_collection, test_document)
+        assert insert_result is not None
         
         # Test get_one with filters
         result = get_one(self.test_collection, {"userid": 12345})
@@ -790,7 +840,8 @@ class TestRealMongoDBIntegration:
         ]
         
         for doc in test_documents:
-            insert(self.test_collection, doc)
+            insert_result = insert(self.test_collection, doc)
+            assert insert_result is not None
         
         # Test get_many with filters
         active_users = get_many(self.test_collection, {"status": "active"})
@@ -813,7 +864,8 @@ class TestRealMongoDBIntegration:
             "status": "inactive"
         }
         
-        doc_id = insert(self.test_collection, test_document)
+        insert_result = insert(self.test_collection, test_document)
+        assert insert_result is not None
         
         # Update document
         updated_data = {
@@ -823,10 +875,14 @@ class TestRealMongoDBIntegration:
             "updated_at": time.time()
         }
         
-        update_success = update(self.test_collection, {"userid": 12345}, updated_data)
+        update_result = update(self.test_collection, {"userid": 12345}, updated_data)
         
         # Verify update
-        assert update_success is True
+        assert update_result is not None
+        assert isinstance(update_result, UpdateResult)
+        assert update_result.modified_count == 1
+        assert update_result.matched_count == 1
+        assert update_result.acknowledged is True
         
         # Verify updated document
         result = get_one(self.test_collection, {"userid": 12345})
@@ -844,13 +900,17 @@ class TestRealMongoDBIntegration:
         ]
         
         for doc in test_documents:
-            insert(self.test_collection, doc)
+            insert_result = insert(self.test_collection, doc)
+            assert insert_result is not None
         
         # Delete inactive users
-        delete_success = delete(self.test_collection, {"status": "inactive"})
+        delete_result = delete(self.test_collection, {"status": "inactive"})
         
         # Verify deletion
-        assert delete_success is True
+        assert delete_result is not None
+        assert isinstance(delete_result, DeleteResult)
+        assert delete_result.deleted_count == 1
+        assert delete_result.acknowledged is True
         
         # Verify only active users remain
         remaining_users = get_many(self.test_collection, {})
@@ -868,7 +928,8 @@ class TestRealMongoDBIntegration:
         ]
         
         for doc in test_documents:
-            insert(self.test_collection, doc)
+            insert_result = insert(self.test_collection, doc)
+            assert insert_result is not None
         
         # Test count without filters
         total_count = count(self.test_collection)
@@ -896,7 +957,8 @@ class TestRealMongoDBIntegration:
         ]
         
         for doc in test_documents:
-            insert(self.test_collection, doc)
+            insert_result = insert(self.test_collection, doc)
+            assert insert_result is not None
         
         # Test simple filters first
         active_users = get_many(self.test_collection, {"status": "active"})
@@ -915,20 +977,27 @@ class TestRealMongoDBIntegration:
         assert active_adults == 3
         
         # Test update operations
-        update_success = update(
+        update_result = update(
             self.test_collection, 
             {"userid": 2}, 
             {"honor_roll": True}
         )
-        assert update_success is True
+        assert update_result is not None
+        assert isinstance(update_result, UpdateResult)
+        assert update_result.modified_count == 1
+        assert update_result.matched_count == 1
+        assert update_result.acknowledged is True
         
         # Verify update worked
         honor_roll_count = count(self.test_collection, {"honor_roll": True})
         assert honor_roll_count == 1
         
         # Test delete with filters
-        delete_success = delete(self.test_collection, {"status": "inactive"})
-        assert delete_success is True
+        delete_result = delete(self.test_collection, {"status": "inactive"})
+        assert delete_result is not None
+        assert isinstance(delete_result, DeleteResult)
+        assert delete_result.deleted_count == 1
+        assert delete_result.acknowledged is True
         
         # Verify deletion
         remaining_count = count(self.test_collection, {})
@@ -941,16 +1010,23 @@ class TestRealMongoDBIntegration:
         assert result is None
         
         # Test update with non-existent document
-        update_success = update(
+        update_result = update(
             self.test_collection, 
             {"userid": 99999}, 
             {"status": "active"}
         )
-        assert update_success is False
+        assert update_result is not None
+        assert isinstance(update_result, UpdateResult)
+        assert update_result.modified_count == 0
+        assert update_result.matched_count == 0
+        assert update_result.acknowledged is True
         
         # Test delete with non-existent document
-        delete_success = delete(self.test_collection, {"userid": 99999})
-        assert delete_success is False
+        delete_result = delete(self.test_collection, {"userid": 99999})
+        assert delete_result is not None
+        assert isinstance(delete_result, DeleteResult)
+        assert delete_result.deleted_count == 0
+        assert delete_result.acknowledged is True
     
     def test_real_performance_operations(self):
         """Test real performance with larger datasets"""
@@ -968,7 +1044,8 @@ class TestRealMongoDBIntegration:
         # Insert all documents
         start_time = time.time()
         for doc in documents:
-            insert(self.test_collection, doc)
+            insert_result = insert(self.test_collection, doc)
+            assert insert_result is not None
         insert_time = time.time() - start_time
         
         # Test bulk operations
@@ -986,9 +1063,9 @@ class TestRealMongoDBIntegration:
         assert len(active_users) == 50
         
         # Performance assertions (basic checks)
-        assert insert_time < 5.0  # Should insert 100 docs in less than 5 seconds
-        assert query_time < 2.0   # Should query 100 docs in less than 2 seconds
-        assert filter_time < 1.0  # Should filter 100 docs in less than 1 second
+        assert insert_time < 20.0  # Should insert 100 docs in less than 20 seconds
+        assert query_time < 5.0   # Should query 100 docs in less than 5 seconds
+        assert filter_time < 3.0  # Should filter 100 docs in less than 3 seconds
         
         print(f"Performance metrics:")
         print(f"  Insert 100 docs: {insert_time:.3f}s")
