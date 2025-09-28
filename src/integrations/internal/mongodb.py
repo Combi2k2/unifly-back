@@ -234,7 +234,7 @@ def update(collection: Collection, filters: Dict[str, Any], data: Any) -> bool:
     """
     try:
         document = data.model_dump() if hasattr(data, 'model_dump') else data
-        result = collection.update_one(
+        result = collection.update_many(
             filters,
             {"$set": document}
         )
@@ -261,7 +261,7 @@ def delete(collection: Collection, filters: Dict[str, Any]) -> bool:
         True if at least one document was deleted, False otherwise
     """
     try:
-        result = collection.delete_one(filters)
+        result = collection.delete_many(filters)
         
         if result.deleted_count > 0:
             logger.info(f"Deleted document with filters {filters} from {collection.name}")
