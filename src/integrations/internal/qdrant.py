@@ -95,7 +95,7 @@ def create_collection(collection_name: str, vector_size: int = 384, distance: Di
         
     except Exception as e:
         logger.error(f"Failed to create collection {collection_name}: {e}")
-        return False
+        raise
 
 def delete_collection(collection_name: str) -> bool:
     """
@@ -111,7 +111,7 @@ def delete_collection(collection_name: str) -> bool:
         return True
     except Exception as e:
         logger.error(f"Failed to delete collection {collection_name}: {e}")
-        return False
+        raise
 
 def close_qdrant_connection():
     """Close Qdrant client connection"""
@@ -125,6 +125,7 @@ def close_qdrant_connection():
             logger.info("Qdrant client connection closed")
     except Exception as e:
         logger.error(f"Error closing Qdrant client: {e}")
+        raise
 
 def check_qdrant_connection() -> bool:
     """
@@ -144,7 +145,7 @@ def check_qdrant_connection() -> bool:
         return True
         
     except Exception:
-        return False
+        raise
 
 def reconnect_qdrant():
     """Force reconnection to Qdrant"""
@@ -175,7 +176,25 @@ def get_collection_info(collection_name: str) -> Optional[Dict[str, Any]]:
         
     except Exception as e:
         logger.error(f"Failed to get collection info for {collection_name}: {e}")
-        return None
+        raise
+
+def exists_collection(collection_name: str) -> bool:
+    """
+    Check if a collection exists
+    
+    Args:
+        collection_name: Name of the collection
+        
+    Returns:
+        True if collection exists, False otherwise
+    """
+    try:
+        client = get_qdrant_client()
+        client.get_collection(collection_name)
+        return True
+    except Exception as e:
+        logger.error(f"Failed to check if collection {collection_name} exists: {e}")
+        return False
 
 if __name__ == "__main__":
     print("Qdrant Client Initialization Test")
