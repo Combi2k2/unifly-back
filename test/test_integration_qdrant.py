@@ -21,7 +21,8 @@ from src.integrations.internal.qdrant import (
     close_qdrant_connection,
     check_qdrant_connection,
     reconnect_qdrant,
-    get_collection_info
+    get_collection_info,
+    exists_collection
 )
 
 class TestQdrantClient:
@@ -149,11 +150,9 @@ class TestQdrantClient:
         # Mock client failure
         mock_get_client.side_effect = Exception("Client failed")
         
-        # Test collection creation
-        result = create_collection("test_collection")
-        
-        # Assertions
-        assert result is False
+        # Test that exception is raised
+        with pytest.raises(Exception, match="Client failed"):
+            create_collection("test_collection")
     
     @patch('src.integrations.internal.qdrant.get_qdrant_client')
     def test_delete_collection_success(self, mock_get_client):
@@ -175,11 +174,9 @@ class TestQdrantClient:
         # Mock client failure
         mock_get_client.side_effect = Exception("Client failed")
         
-        # Test collection deletion
-        result = delete_collection("test_collection")
-        
-        # Assertions
-        assert result is False
+        # Test that exception is raised
+        with pytest.raises(Exception, match="Client failed"):
+            delete_collection("test_collection")
     
     def test_close_qdrant_connection(self):
         """Test closing Qdrant connection"""
@@ -234,11 +231,9 @@ class TestQdrantClient:
         # Mock get_collections failure
         mock_client.get_collections.side_effect = Exception("Collections failed")
         
-        # Test connection check
-        result = check_qdrant_connection()
-        
-        # Assertions
-        assert result is False
+        # Test that exception is raised
+        with pytest.raises(Exception, match="Collections failed"):
+            check_qdrant_connection()
     
     @patch('src.integrations.internal.qdrant.close_qdrant_connection')
     @patch('src.integrations.internal.qdrant.get_qdrant_client')
@@ -293,11 +288,9 @@ class TestCollectionOperations:
         # Mock client failure
         mock_get_client.side_effect = Exception("Client failed")
         
-        # Test collection info
-        result = get_collection_info("test_collection")
-        
-        # Assertions
-        assert result is None
+        # Test that exception is raised
+        with pytest.raises(Exception, match="Client failed"):
+            get_collection_info("test_collection")
     
     @patch('src.integrations.internal.qdrant.get_qdrant_client')
     def test_get_collection_info_collection_not_found(self, mock_get_client):
@@ -307,11 +300,51 @@ class TestCollectionOperations:
         mock_client.get_collection.side_effect = Exception("Collection not found")
         mock_get_client.return_value = mock_client
         
-        # Test collection info
-        result = get_collection_info("nonexistent_collection")
+        # Test that exception is raised
+        with pytest.raises(Exception, match="Collection not found"):
+            get_collection_info("nonexistent_collection")
+    
+    @patch('src.integrations.internal.qdrant.get_qdrant_client')
+    def test_exists_collection_success(self, mock_get_client):
+        """Test successful collection existence check"""
+        # Mock client
+        mock_client = Mock()
+        mock_client.get_collection.return_value = Mock()  # Collection exists
+        mock_get_client.return_value = mock_client
+        
+        # Test collection existence
+        result = exists_collection("test_collection")
         
         # Assertions
-        assert result is None
+        assert result is True
+        mock_client.get_collection.assert_called_once_with("test_collection")
+    
+    @patch('src.integrations.internal.qdrant.get_qdrant_client')
+    def test_exists_collection_not_found(self, mock_get_client):
+        """Test collection existence check when collection doesn't exist"""
+        # Mock client with collection not found
+        mock_client = Mock()
+        mock_client.get_collection.side_effect = Exception("Collection not found")
+        mock_get_client.return_value = mock_client
+        
+        # Test collection existence
+        result = exists_collection("nonexistent_collection")
+        
+        # Assertions
+        assert result is False
+        mock_client.get_collection.assert_called_once_with("nonexistent_collection")
+    
+    @patch('src.integrations.internal.qdrant.get_qdrant_client')
+    def test_exists_collection_client_failure(self, mock_get_client):
+        """Test collection existence check with client failure"""
+        # Mock client failure
+        mock_get_client.side_effect = Exception("Client failed")
+        
+        # Test collection existence
+        result = exists_collection("test_collection")
+        
+        # Assertions
+        assert result is False
 
 
 class TestIntegration:
@@ -378,8 +411,8 @@ class TestIntegration:
         
         # Test with connection failure
         mock_client.get_collections.side_effect = Exception("Connection lost")
-        result = check_qdrant_connection()
-        assert result is False
+        with pytest.raises(Exception, match="Connection lost"):
+            check_qdrant_connection()
 
 
 class TestErrorHandling:
@@ -403,11 +436,9 @@ class TestErrorHandling:
         mock_client.create_collection.side_effect = Exception("Invalid parameters")
         mock_get_client.return_value = mock_client
         
-        # Test collection creation
-        result = create_collection("test_collection", vector_size=-1)
-        
-        # Assertions
-        assert result is False
+        # Test that exception is raised
+        with pytest.raises(Exception, match="Invalid parameters"):
+            create_collection("test_collection", vector_size=-1)
     
     @patch('src.integrations.internal.qdrant.get_qdrant_client')
     def test_delete_nonexistent_collection(self, mock_get_client):
@@ -417,11 +448,9 @@ class TestErrorHandling:
         mock_client.delete_collection.side_effect = Exception("Collection not found")
         mock_get_client.return_value = mock_client
         
-        # Test collection deletion
-        result = delete_collection("nonexistent_collection")
-        
-        # Assertions
-        assert result is False
+        # Test that exception is raised
+        with pytest.raises(Exception, match="Collection not found"):
+            delete_collection("nonexistent_collection")
 
 
 if __name__ == "__main__":
