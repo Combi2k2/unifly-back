@@ -1,3 +1,4 @@
+from shlex import join
 from langchain_core.language_models import BaseChatModel
 from langchain_core.embeddings import Embeddings
 
@@ -9,7 +10,7 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_qdrant import QdrantVectorStore
 
 from src.integrations.internal.qdrant import get_qdrant_client, create_collection, exists_collection
-from src.integrations.internal.mongodb import get_mongodb_database
+from src.integrations.internal.mongodb import get_mongodb_collection
 from src.config import (
     LANGCHAIN_EMBEDDING_PROVIDER,
     LANGCHAIN_EMBEDDING_MODEL,
@@ -34,8 +35,6 @@ _splitter = RecursiveCharacterTextSplitter(
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-_joiner = get_mongodb_database("joiner")
 
 def get_langchain_embedding() -> Embeddings:
     """
@@ -82,7 +81,6 @@ def get_langchain_qdrant(collection_name: str) -> QdrantVectorStore:
     try:
         if not exists_collection(collection_name):
             create_collection(collection_name, embedding_size)
-            _joiner.create_collection(collection_name)
     except Exception as e:
         logger.debug(f"Collection {collection_name} already exists")
         pass
@@ -133,7 +131,8 @@ def insert_vecdb(collection_name: str, text: str, metadata: Dict[str, Any]) -> L
     try:
         vectorstore = get_langchain_qdrant(collection_name)
         result = vectorstore.add_texts(texts, [metadata for _ in texts])
-        _joiner[collection_name].insert_one({
+        joiner = get_mongodb_collection("joiner", collection_name)
+        joiner.insert_one({
             **metadata,
             "qids": result
         })
@@ -155,13 +154,14 @@ def delete_vecdb(collection_name: str, filters: Dict[str, Any]) -> bool:
         True if successful, False otherwise
     """
     try:
-        docs = _joiner[collection_name].find(filters)
+        joiner = get_mongodb_collection("joiner", collection_name)
+        docs = joiner.find(filters)
         qids = [item for doc in docs for item in doc["qids"]]
 
         if len(qids) > 0:
             vectorstore = get_langchain_qdrant(collection_name)
             vectorstore.delete(qids)
-            _joiner[collection_name].delete_many(filters)
+            joiner.delete_many(filters)
             logger.info(f"Deleted texts from Qdrant collection: {collection_name}")
             return True
         else:
