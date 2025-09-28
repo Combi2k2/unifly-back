@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, field_validator
-from typing import Optional
+from typing import Optional, List
 
 # ========================
 # Core University Entities
@@ -66,6 +66,9 @@ class EduStats(BaseModel):
     acceptance_rate: Optional[float] = Field(None, ge=0.0, le=1.0)
     graduation_rate: Optional[float] = Field(None, ge=0.0, le=1.0)
     retention_rate: Optional[float] = Field(None, ge=0.0, le=1.0)
+    
+    # Reference sources
+    reference: List[str] = Field([], description="List of websites where the statistics are reported")
 
 class EduScore(BaseModel):
     # Overall Scores
@@ -87,6 +90,9 @@ class EduScore(BaseModel):
     
     # Ranking Year
     ranking_year: Optional[int] = Field(None, ge=2000, le=2030)
+    
+    # Reference sources
+    reference: List[str] = Field([], description="List of websites where the scores are reported")
 
 class University(BaseModel):
     university_id: int
