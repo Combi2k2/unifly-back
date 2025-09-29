@@ -119,8 +119,7 @@ def close_qdrant_connection():
     
     try:
         if _client:
-            # Qdrant client doesn't have an explicit close method
-            # but we can set it to None to release resources
+            _client.close()
             _client = None
             logger.info("Qdrant client connection closed")
     except Exception as e:
@@ -190,11 +189,10 @@ def exists_collection(collection_name: str) -> bool:
     """
     try:
         client = get_qdrant_client()
-        client.get_collection(collection_name)
-        return True
+        return client.collection_exists(collection_name)
     except Exception as e:
         logger.error(f"Failed to check if collection {collection_name} exists: {e}")
-        return False
+        raise
 
 if __name__ == "__main__":
     print("Qdrant Client Initialization Test")
