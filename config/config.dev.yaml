@@ -6,33 +6,66 @@
 databases:
   mongodb:
     database_name: "unifly_dev"
-    # Collection names for different model categories
+    # User-related collections
     user_base: "unifly_users"
     student_profiles: "unifly_student_profiles"
     student_preferences: "unifly_student_preferences"
     advisor_profiles: "unifly_advisor_profiles"
     parent_profiles: "unifly_parent_profiles"
     admin_profiles: "unifly_admin_profiles"
+    
+    # University-related collections
     universities: "unifly_universities"
     university_campuses: "unifly_university_campuses"
     university_programs: "unifly_university_programs"
     university_people: "unifly_university_people"
     university_research: "unifly_university_research"
-    university_scholarships: "unifly_university_scholarships"
     university_faculties: "unifly_university_faculties"
     university_departments: "unifly_university_departments"
+    
+    # Scholarship-related collections
+    scholarships: "unifly_scholarships"
+    scholarship_providers: "unifly_scholarship_providers"
+    
+    # Other collections
     plans: "unifly_plans"
   
   qdrant:
-    # Collection names for relevant models
+    # University-related collections
     universities: "unifly_universities"
     university_campuses: "unifly_university_campuses"
     university_programs: "unifly_university_programs"
     university_people: "unifly_university_people"
     university_research: "unifly_university_research"
-    university_scholarships: "unifly_university_scholarships"
     university_faculties: "unifly_university_faculties"
     university_departments: "unifly_university_departments"
+    
+    # Scholarship-related collections
+    scholarships: "unifly_scholarships"
+    scholarship_providers: "unifly_scholarship_providers"
+
+# =====================
+# LangChain Configuration
+# =====================
+langchain:
+  embedding:
+    # Embedding model configuration
+    provider: "google_gemini"
+    model: "gemini-embedding-001"
+    size: 3072
+    secret:
+      google_api_key: "GOOGLE_API_KEY"
+  
+  llm:
+    # LLM model configuration
+    provider: "google_genai"
+    model: "gemini-2.5-flash"
+    secret:
+      api_key: "GOOGLE_API_KEY"
+  
+  chunk:
+    chunk_size: 1000
+    chunk_overlap: 200
 
 # =====================
 # Application Configuration
@@ -52,3 +85,10 @@ api:
   port: 8000
   cors_origins: ["http://localhost:3000", "http://localhost:3001"]
   rate_limit: "100/minute"
+  # IP Whitelist Configuration
+  ip_whitelist_enabled: false  # Set to true to enable IP restrictions
+  ip_whitelist:
+    - "127.0.0.1"          # Localhost
+    - "::1"                # IPv6 localhost
+    - "192.168.1.0/24"     # Example local network range
+    - "10.0.0.0/8"         # Example private network range
