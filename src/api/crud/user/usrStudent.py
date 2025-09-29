@@ -40,7 +40,7 @@ def get_student_preferences_collection():
     return db[MONGODB_STUDENT_PREFERENCES]
 
 # Student profile endpoints
-@student_router.get("/student-profiles", response_model=List[StudentProfile])
+@student_router.post("/student-profiles/filter", response_model=List[StudentProfile])
 async def get_student_profiles(
     skip: int = 0, 
     limit: int = 100, 
@@ -132,7 +132,7 @@ async def delete_student_profiles(filters: Dict[str, Any]):
             detail=f"Error bulk deleting student profiles: {str(e)}"
         )
 
-@student_router.get("/student-profiles/count")
+@student_router.post("/student-profiles/count")
 async def count_student_profiles(filters: Dict[str, Any] = {}):
     """Count student profiles"""
     try:
@@ -146,7 +146,7 @@ async def count_student_profiles(filters: Dict[str, Any] = {}):
         )
 
 # Student preference endpoints
-@student_router.get("/student-preferences", response_model=List[StudentPreference])
+@student_router.post("/student-preferences/filter", response_model=List[StudentPreference])
 async def get_student_preferences(
     skip: int = 0, 
     limit: int = 100, 
@@ -240,7 +240,7 @@ async def delete_student_preferences(filters: Dict[str, Any]):
             detail=f"Error bulk deleting student preferences: {str(e)}"
         )
 
-@student_router.get("/student-preferences/count")
+@student_router.post("/student-preferences/count")
 async def count_student_preferences(filters: Dict[str, Any] = {}):
     """Count student preferences"""
     try:

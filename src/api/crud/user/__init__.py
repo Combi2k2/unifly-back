@@ -15,11 +15,11 @@ from .usrParent import parent_router
 user_router = APIRouter()
 
 # Include sub-routers
-user_router.include_router(user_base_router, tags=["User Base CRUD"])
-user_router.include_router(student_router, tags=["Student CRUD"])
-user_router.include_router(admin_router, tags=["Admin CRUD"])
-user_router.include_router(advisor_router, tags=["Advisor CRUD"])
-user_router.include_router(parent_router, tags=["Parent CRUD"])
+user_router.include_router(user_base_router, tags=["CRUD User-Base"])
+user_router.include_router(student_router, tags=["CRUD User-Student"])
+user_router.include_router(admin_router, tags=["CRUD User-Admin"])
+user_router.include_router(advisor_router, tags=["CRUD User-Advisor"])
+user_router.include_router(parent_router, tags=["CRUD User-Parent"])
 
 __all__ = ["user_router"]
 

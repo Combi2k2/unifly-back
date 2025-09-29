@@ -35,7 +35,7 @@ def get_users_collection():
     return db[MONGODB_USER_BASE]
 
 # User endpoints
-@user_base_router.get("/users", response_model=List[UserBase])
+@user_base_router.post("/users/filter", response_model=List[UserBase])
 async def get_users(
     skip: int = 0, 
     limit: int = 100, 
@@ -135,7 +135,7 @@ async def delete_users(filters: Dict[str, Any]):
             detail=f"Error bulk deleting users: {str(e)}"
         )
 
-@user_base_router.get("/users/count")
+@user_base_router.post("/users/count")
 async def count_users(filters: Dict[str, Any] = {}):
     """Count all users"""
     collection = get_users_collection()
