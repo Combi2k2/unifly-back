@@ -37,7 +37,7 @@ _config = _load_config()
 MONGODB_CONNECTION_STRING = os.getenv("MONGODB_CONNECTION_STRING", "mongodb://localhost:27017/")
 MONGODB_DATABASE_NAME = _config['databases']['mongodb']['database_name']
 
-# MongoDB Collection Names
+# MongoDB Collection Names - User-related
 MONGODB_USER_BASE = _config['databases']['mongodb']['user_base']
 MONGODB_STUDENT_PROFILES    = _config['databases']['mongodb']['student_profiles']
 MONGODB_STUDENT_PREFERENCES = _config['databases']['mongodb']['student_preferences']
@@ -45,6 +45,7 @@ MONGODB_ADVISOR_PROFILES    = _config['databases']['mongodb']['advisor_profiles'
 MONGODB_PARENT_PROFILES     = _config['databases']['mongodb']['parent_profiles']
 MONGODB_ADMIN_PROFILES      = _config['databases']['mongodb']['admin_profiles']
 
+# MongoDB Collection Names - University-related
 MONGODB_UNIVERSITIES = _config['databases']['mongodb']['universities']
 MONGODB_UNIVERSITY_FACULTIES    = _config['databases']['mongodb']['university_faculties']
 MONGODB_UNIVERSITY_DEPARTMENTS  = _config['databases']['mongodb']['university_departments']
@@ -52,8 +53,12 @@ MONGODB_UNIVERSITY_CAMPUSES     = _config['databases']['mongodb']['university_ca
 MONGODB_UNIVERSITY_PROGRAMS     = _config['databases']['mongodb']['university_programs']
 MONGODB_UNIVERSITY_PEOPLE       = _config['databases']['mongodb']['university_people']
 MONGODB_UNIVERSITY_RESEARCH     = _config['databases']['mongodb']['university_research']
-MONGODB_UNIVERSITY_SCHOLARSHIPS = _config['databases']['mongodb']['university_scholarships']
 
+# MongoDB Collection Names - Scholarship-related
+MONGODB_SCHOLARSHIPS = _config['databases']['mongodb']['scholarships']
+MONGODB_SCHOLARSHIP_PROVIDERS = _config['databases']['mongodb']['scholarship_providers']
+
+# MongoDB Collection Names - Other
 MONGODB_PLANS = _config['databases']['mongodb']['plans']
 
 # =====================
@@ -64,7 +69,7 @@ MONGODB_PLANS = _config['databases']['mongodb']['plans']
 QDRANT_URL = os.getenv("QDRANT_URL", None)  # Optional URL for cloud Qdrant
 QDRANT_KEY = os.getenv("QDRANT_KEY", None)  # Optional key for cloud Qdrant
 
-# Qdrant Collection Names
+# Qdrant Collection Names - University-related
 QDRANT_UNIVERSITIES = _config['databases']['qdrant']['universities']
 QDRANT_UNIVERSITY_FACULTIES    = _config['databases']['qdrant']['university_faculties']
 QDRANT_UNIVERSITY_DEPARTMENTS  = _config['databases']['qdrant']['university_departments']
@@ -72,7 +77,10 @@ QDRANT_UNIVERSITY_CAMPUSES     = _config['databases']['qdrant']['university_camp
 QDRANT_UNIVERSITY_PROGRAMS     = _config['databases']['qdrant']['university_programs']
 QDRANT_UNIVERSITY_PEOPLE       = _config['databases']['qdrant']['university_people']
 QDRANT_UNIVERSITY_RESEARCH     = _config['databases']['qdrant']['university_research']
-QDRANT_UNIVERSITY_SCHOLARSHIPS = _config['databases']['qdrant']['university_scholarships']
+
+# Qdrant Collection Names - Scholarship-related
+QDRANT_SCHOLARSHIPS = _config['databases']['qdrant']['scholarships']
+QDRANT_SCHOLARSHIP_PROVIDERS = _config['databases']['qdrant']['scholarship_providers']
 
 # =====================
 # LangChain Configuration
@@ -143,36 +151,44 @@ if __name__ == "__main__":
     print(f"  Port: {API_PORT}")
     print(f"  CORS Origins: {CORS_ORIGINS}")
     
-    print("\nMongoDB Database Names:")
-    print(f"  user_base: {MONGODB_USER_BASE}")
-    print(f"  student_profiles: {MONGODB_STUDENT_PROFILES}")
-    print(f"  student_preferences: {MONGODB_STUDENT_PREFERENCES}")
-    print(f"  advisor_profiles: {MONGODB_ADVISOR_PROFILES}")
-    print(f"  parent_profiles: {MONGODB_PARENT_PROFILES}")
-    print(f"  admin_profiles: {MONGODB_ADMIN_PROFILES}")
-    print(f"  universities: {MONGODB_UNIVERSITIES}")
-    print(f"  university_campuses: {MONGODB_UNIVERSITY_CAMPUSES}")
-    print(f"  university_programs: {MONGODB_UNIVERSITY_PROGRAMS}")
-    print(f"  university_people: {MONGODB_UNIVERSITY_PEOPLE}")
-    print(f"  university_research: {MONGODB_UNIVERSITY_RESEARCH}")
-    print(f"  university_scholarships: {MONGODB_UNIVERSITY_SCHOLARSHIPS}")
-    print(f"  university_faculties: {MONGODB_UNIVERSITY_FACULTIES}")
-    print(f"  university_departments: {MONGODB_UNIVERSITY_DEPARTMENTS}")
-    print(f"  plans: {MONGODB_PLANS}")
+    print("\nMongoDB Collection Names:")
+    print("  User-related:")
+    print(f"    user_base: {MONGODB_USER_BASE}")
+    print(f"    student_profiles: {MONGODB_STUDENT_PROFILES}")
+    print(f"    student_preferences: {MONGODB_STUDENT_PREFERENCES}")
+    print(f"    advisor_profiles: {MONGODB_ADVISOR_PROFILES}")
+    print(f"    parent_profiles: {MONGODB_PARENT_PROFILES}")
+    print(f"    admin_profiles: {MONGODB_ADMIN_PROFILES}")
+    print("  University-related:")
+    print(f"    universities: {MONGODB_UNIVERSITIES}")
+    print(f"    university_campuses: {MONGODB_UNIVERSITY_CAMPUSES}")
+    print(f"    university_programs: {MONGODB_UNIVERSITY_PROGRAMS}")
+    print(f"    university_people: {MONGODB_UNIVERSITY_PEOPLE}")
+    print(f"    university_research: {MONGODB_UNIVERSITY_RESEARCH}")
+    print(f"    university_faculties: {MONGODB_UNIVERSITY_FACULTIES}")
+    print(f"    university_departments: {MONGODB_UNIVERSITY_DEPARTMENTS}")
+    print("  Scholarship-related:")
+    print(f"    scholarships: {MONGODB_SCHOLARSHIPS}")
+    print(f"    scholarship_providers: {MONGODB_SCHOLARSHIP_PROVIDERS}")
+    print("  Other:")
+    print(f"    plans: {MONGODB_PLANS}")
     
     print("\nQdrant Configuration:")
     print(f"  URL: {'Set' if QDRANT_URL else 'Not set'}")
     print(f"  Key: {'Set' if QDRANT_KEY else 'Not set'}")
     
     print("\nQdrant Collection Names:")
-    print(f"  universities: {QDRANT_UNIVERSITIES}")
-    print(f"  university_campuses: {QDRANT_UNIVERSITY_CAMPUSES}")
-    print(f"  university_programs: {QDRANT_UNIVERSITY_PROGRAMS}")
-    print(f"  university_people: {QDRANT_UNIVERSITY_PEOPLE}")
-    print(f"  university_research: {QDRANT_UNIVERSITY_RESEARCH}")
-    print(f"  university_scholarships: {QDRANT_UNIVERSITY_SCHOLARSHIPS}")
-    print(f"  university_faculties: {QDRANT_UNIVERSITY_FACULTIES}")
-    print(f"  university_departments: {QDRANT_UNIVERSITY_DEPARTMENTS}")
+    print("  University-related:")
+    print(f"    universities: {QDRANT_UNIVERSITIES}")
+    print(f"    university_campuses: {QDRANT_UNIVERSITY_CAMPUSES}")
+    print(f"    university_programs: {QDRANT_UNIVERSITY_PROGRAMS}")
+    print(f"    university_people: {QDRANT_UNIVERSITY_PEOPLE}")
+    print(f"    university_research: {QDRANT_UNIVERSITY_RESEARCH}")
+    print(f"    university_faculties: {QDRANT_UNIVERSITY_FACULTIES}")
+    print(f"    university_departments: {QDRANT_UNIVERSITY_DEPARTMENTS}")
+    print("  Scholarship-related:")
+    print(f"    scholarships: {QDRANT_SCHOLARSHIPS}")
+    print(f"    scholarship_providers: {QDRANT_SCHOLARSHIP_PROVIDERS}")
     
     print("\nLangChain Configuration:")
     print(f"  Embedding Provider: {LANGCHAIN_EMBEDDING_PROVIDER}")
