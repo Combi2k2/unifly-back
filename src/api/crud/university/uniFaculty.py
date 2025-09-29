@@ -44,7 +44,7 @@ def get_faculties_collection():
     return db[MONGODB_UNIVERSITY_FACULTIES]
 
 # Faculty endpoints
-@uni_faculty_router.get("/university-faculties", response_model=List[Faculty])
+@uni_faculty_router.post("/filter", response_model=List[Faculty])
 async def get_university_faculties(
     skip: int = 0, 
     limit: int = 100, 
@@ -53,7 +53,6 @@ async def get_university_faculties(
     """Get all university faculties with pagination and filtering"""
     try:
         collection = get_faculties_collection()
-        
         results = get_many(collection, filters, offset=skip, limit=limit)
         results = [Faculty(**result) for result in results]
         return results
@@ -64,12 +63,12 @@ async def get_university_faculties(
             detail=f"Error retrieving university faculties: {str(e)}"
         )
 
-@uni_faculty_router.get("/university-faculties/{faculty_id}", response_model=Faculty)
-async def get_university_faculty(faculty_id: str):
+@uni_faculty_router.get("/{id}", response_model=Faculty)
+async def get_university_faculty(id: int):
     """Get a specific university faculty by ID"""
     try:
         collection = get_faculties_collection()
-        result = get_one(collection, {"faculty_id": faculty_id})
+        result = get_one(collection, {"faculty_id": id})
         result = Faculty(**result) if result else None
         return result
     except ValueError:
@@ -78,33 +77,26 @@ async def get_university_faculty(faculty_id: str):
             detail="Invalid faculty ID format"
         )
     except Exception as e:
-        logger.error(f"Error getting university faculty by ID {faculty_id}: {e}")
+        logger.error(f"Error getting university faculty by ID {id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error retrieving university faculty: {str(e)}"
         )
 
-@uni_faculty_router.post("/university-faculties")
-async def create_university_faculty(faculty_data: Faculty):
+@uni_faculty_router.post("/")
+async def create_university_faculty(data: Faculty):
     """Create a new university faculty"""
     try:
         collection = get_faculties_collection()
-        
-        # Insert into MongoDB
-        result = insert(collection, faculty_data)
-        
-        # Prepare data for vector database
-        vec_data = faculty_data.model_dump()
-        vec_data.pop("faculty_id", None)
-        vec_data.pop("university_id", None)
-        vec_data.pop("contact", None)
+
+        result = insert(collection, data)
+        data = data.model_dump()
         metadata = {
-            "faculty_id": faculty_data.faculty_id,
-            "university_id": faculty_data.university_id
+            "faculty_id": data.pop("faculty_id"),
+            "university_id": data.pop("university_id"),
+            "reference": data.pop("contact")
         }
-        
-        # Insert into vector database
-        insert_vecdb(QDRANT_UNIVERSITY_FACULTIES, pprint.pformat(vec_data), metadata)
+        insert_vecdb(QDRANT_UNIVERSITY_FACULTIES, pprint.pformat(data), metadata)
         
         return {
             "success": True,
@@ -118,31 +110,26 @@ async def create_university_faculty(faculty_data: Faculty):
             detail=f"Error creating university faculty: {str(e)}"
         )
 
-@uni_faculty_router.put("/university-faculties")
+@uni_faculty_router.put("/")
 async def update_university_faculties(
     filters: Dict[str, Any],
-    update_data: Dict[str, Any]
+    data: Dict[str, Any]
 ):
     """Update multiple university faculties based on filters"""
     try:
         collection = get_faculties_collection()
+        result = update(collection, filters, data)
         
-        # Update in MongoDB
-        result = update(collection, filters, update_data)
-        
-        # Update in vector database
         if result.modified_count > 0:
             updated_docs = get_many(collection, filters)
             for doc in updated_docs:
-                vec_data = doc.copy()
-                vec_data.pop("faculty_id", None)
-                vec_data.pop("university_id", None)
-                vec_data.pop("contact", None)
+                id = doc.get("faculty_id")
                 metadata = {
-                    "faculty_id": doc.get("faculty_id"),
-                    "university_id": doc.get("university_id")
+                    "faculty_id": doc.pop("faculty_id"),
+                    "university_id": doc.pop("university_id"),
+                    "reference": doc.pop("contact")
                 }
-                update_vecdb(QDRANT_UNIVERSITY_FACULTIES, {"faculty_id": doc.get("faculty_id")}, pprint.pformat(vec_data), metadata)
+                update_vecdb(QDRANT_UNIVERSITY_FACULTIES, {"faculty_id": id}, pprint.pformat(doc), metadata)
         
         return {
             "success": True,
@@ -157,7 +144,7 @@ async def update_university_faculties(
             detail=f"Error bulk updating university faculties: {str(e)}"
         )
 
-@uni_faculty_router.delete("/university-faculties")
+@uni_faculty_router.delete("/")
 async def delete_university_faculties(filters: Dict[str, Any]):
     """Delete multiple university faculties based on filters"""
     try:
@@ -182,7 +169,7 @@ async def delete_university_faculties(filters: Dict[str, Any]):
             detail=f"Error bulk deleting university faculties: {str(e)}"
         )
 
-@uni_faculty_router.get("/university-faculties/count")
+@uni_faculty_router.post("/count")
 async def count_university_faculties(filters: Dict[str, Any] = {}):
     """Count all university faculties"""
     collection = get_faculties_collection()

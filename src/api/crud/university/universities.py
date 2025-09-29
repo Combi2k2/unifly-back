@@ -44,7 +44,7 @@ def get_universities_collection():
     return db[MONGODB_UNIVERSITIES]
 
 # University endpoints
-@universities_router.get("/universities", response_model=List[University])
+@universities_router.post("/filter", response_model=List[University])
 async def get_universities(
     skip: int = 0, 
     limit: int = 100, 
@@ -63,7 +63,7 @@ async def get_universities(
             detail=f"Error retrieving universities: {str(e)}"
         )
 
-@universities_router.get("/universities/{id}", response_model=University)
+@universities_router.get("/{id}", response_model=University)
 async def get_university(id: int):
     """Get a specific university by ID"""
     try:
@@ -83,7 +83,7 @@ async def get_university(id: int):
             detail=f"Error retrieving university: {str(e)}"
         )
 
-@universities_router.post("/universities")
+@universities_router.post("/")
 async def create_university(data: University):
     """Create a new university"""
     try:
@@ -109,7 +109,7 @@ async def create_university(data: University):
             detail=f"Error creating university: {str(e)}"
         )
 
-@universities_router.put("/universities")
+@universities_router.put("/")
 async def update_universities(
     filters: Dict[str, Any],
     data: Dict[str, Any]
@@ -142,7 +142,7 @@ async def update_universities(
             detail=f"Error bulk updating universities: {str(e)}"
         )
 
-@universities_router.delete("/universities")
+@universities_router.delete("/")
 async def delete_universities(filters: Dict[str, Any]):
     """Delete multiple universities based on filters"""
     try:
@@ -167,7 +167,7 @@ async def delete_universities(filters: Dict[str, Any]):
             detail=f"Error bulk deleting universities: {str(e)}"
         )
 
-@universities_router.get("/universities/count")
+@universities_router.post("/count")
 async def count_universities(filters: Dict[str, Any] = {}):
     """Count all universities"""
     collection = get_universities_collection()

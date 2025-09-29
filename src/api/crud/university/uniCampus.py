@@ -1,13 +1,13 @@
 """
 Campus CRUD API Router
 
-This module handles campus-specific CRUD operations (Campus).
-Facilities are embedded within Campus data, not stored separately.
+This module handles campus CRUD operations.
 """
 
 from fastapi import APIRouter, HTTPException, status
 from typing import List, Optional, Dict, Any
 import logging
+import pprint
 
 # Import actual university models
 from src.models.university import Campus
@@ -22,9 +22,15 @@ from src.integrations.internal.mongodb import (
     delete,
     count
 )
-from src.config import (
-    MONGODB_UNIVERSITY_CAMPUSES
+
+# Import vector database operations
+from src.integrations.internal.langchain import (
+    insert_vecdb,
+    delete_vecdb,
+    update_vecdb
 )
+
+from src.config import MONGODB_UNIVERSITY_CAMPUSES, QDRANT_UNIVERSITY_CAMPUSES
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -37,15 +43,8 @@ def get_campuses_collection():
     db = get_mongodb_database()
     return db[MONGODB_UNIVERSITY_CAMPUSES]
 
-
-# Health check endpoint
-@campus_router.get("/health")
-async def health_check():
-    """Health check for campus CRUD operations"""
-    return {"status": "healthy", "service": "campus-crud"}
-
 # Campus endpoints
-@campus_router.get("/campuses", response_model=List[Campus])
+@campus_router.post("/filter", response_model=List[Campus])
 async def get_campuses(
     skip: int = 0, 
     limit: int = 100, 
@@ -54,7 +53,6 @@ async def get_campuses(
     """Get all campuses with pagination and filtering"""
     try:
         collection = get_campuses_collection()
-        
         results = get_many(collection, filters, offset=skip, limit=limit)
         results = [Campus(**result) for result in results]
         return results
@@ -65,38 +63,40 @@ async def get_campuses(
             detail=f"Error retrieving campuses: {str(e)}"
         )
 
-@campus_router.get("/campuses/{campus_id}", response_model=Campus)
-async def get_campus(campus_id: str):
+@campus_router.get("/{id}", response_model=Campus)
+async def get_campus(id: int):
     """Get a specific campus by ID"""
     try:
-        # Validate campus_id format (should be an integer)
-        try:
-            campus_id_int = int(campus_id)
-        except ValueError:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid campus_id format: {campus_id}. Expected integer."
-            )
-        
         collection = get_campuses_collection()
-        result = get_one(collection, {"campus_id": campus_id_int})
+        result = get_one(collection, {"campus_id": id})
         result = Campus(**result) if result else None
         return result
-    except HTTPException:
-        raise
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid campus ID format"
+        )
     except Exception as e:
-        logger.error(f"Error getting campus by ID {campus_id}: {e}")
+        logger.error(f"Error getting campus by ID {id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error retrieving campus: {str(e)}"
         )
 
-@campus_router.post("/campuses")
-async def create_campus(campus_data: Campus):
+@campus_router.post("/")
+async def create_campus(data: Campus):
     """Create a new campus"""
     try:
         collection = get_campuses_collection()
-        result = insert(collection, campus_data)
+
+        result = insert(collection, data)
+        data = data.model_dump()
+        metadata = {
+            "campus_id": data.pop("campus_id"),
+            "university_id": data.pop("university_id"),
+            "reference": data.pop("contact")
+        }
+        insert_vecdb(QDRANT_UNIVERSITY_CAMPUSES, pprint.pformat(data), metadata)
         
         return {
             "success": True,
@@ -110,15 +110,26 @@ async def create_campus(campus_data: Campus):
             detail=f"Error creating campus: {str(e)}"
         )
 
-@campus_router.put("/campuses")
-async def update_campuses_bulk(
-    filters: Dict[str, Any], 
-    update_data: Dict[str, Any]
+@campus_router.put("/")
+async def update_campuses(
+    filters: Dict[str, Any],
+    data: Dict[str, Any]
 ):
     """Update multiple campuses based on filters"""
     try:
         collection = get_campuses_collection()
-        result = update(collection, filters, update_data)
+        result = update(collection, filters, data)
+        
+        if result.modified_count > 0:
+            updated_docs = get_many(collection, filters)
+            for doc in updated_docs:
+                id = doc.get("campus_id")
+                metadata = {
+                    "campus_id": doc.pop("campus_id"),
+                    "university_id": doc.pop("university_id"),
+                    "reference": doc.pop("contact")
+                }
+                update_vecdb(QDRANT_UNIVERSITY_CAMPUSES, {"campus_id": id}, pprint.pformat(doc), metadata)
         
         return {
             "success": True,
@@ -127,18 +138,24 @@ async def update_campuses_bulk(
             "acknowledged": result.acknowledged
         }
     except Exception as e:
-        logger.error(f"Error updating campuses: {e}")
+        logger.error(f"Error bulk updating campuses: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error updating campuses: {str(e)}"
+            detail=f"Error bulk updating campuses: {str(e)}"
         )
 
-@campus_router.delete("/campuses")
-async def delete_campuses_bulk(filters: Dict[str, Any]):
+@campus_router.delete("/")
+async def delete_campuses(filters: Dict[str, Any]):
     """Delete multiple campuses based on filters"""
     try:
         collection = get_campuses_collection()
+        
+        # Delete from MongoDB
         result = delete(collection, filters)
+        
+        # Delete from vector database
+        if result.deleted_count > 0:
+            delete_vecdb(QDRANT_UNIVERSITY_CAMPUSES, filters)
         
         return {
             "success": True,
@@ -146,23 +163,15 @@ async def delete_campuses_bulk(filters: Dict[str, Any]):
             "acknowledged": result.acknowledged
         }
     except Exception as e:
-        logger.error(f"Error deleting campuses: {e}")
+        logger.error(f"Error bulk deleting campuses: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error deleting campuses: {str(e)}"
+            detail=f"Error bulk deleting campuses: {str(e)}"
         )
 
-@campus_router.get("/campuses/count")
-async def count_campuses(filters: Optional[Dict[str, Any]] = {}):
-    """Count campuses based on filters"""
-    try:
-        collection = get_campuses_collection()
-        result = count(collection, filters)
-        return {"count": result}
-    except Exception as e:
-        logger.error(f"Error counting campuses: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error counting campuses: {str(e)}"
-        )
+@campus_router.post("/count")
+async def count_campuses(filters: Dict[str, Any] = {}):
+    """Count all campuses"""
+    collection = get_campuses_collection()
+    return count(collection, filters)
 

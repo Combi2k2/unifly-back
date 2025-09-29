@@ -44,7 +44,7 @@ def get_departments_collection():
     return db[MONGODB_UNIVERSITY_DEPARTMENTS]
 
 # Department endpoints
-@uni_department_router.get("/university-departments", response_model=List[Department])
+@uni_department_router.post("/filter", response_model=List[Department])
 async def get_university_departments(
     skip: int = 0, 
     limit: int = 100, 
@@ -53,7 +53,6 @@ async def get_university_departments(
     """Get all university departments with pagination and filtering"""
     try:
         collection = get_departments_collection()
-        
         results = get_many(collection, filters, offset=skip, limit=limit)
         results = [Department(**result) for result in results]
         return results
@@ -64,12 +63,12 @@ async def get_university_departments(
             detail=f"Error retrieving university departments: {str(e)}"
         )
 
-@uni_department_router.get("/university-departments/{department_id}", response_model=Department)
-async def get_university_department(department_id: str):
+@uni_department_router.get("/{id}", response_model=Department)
+async def get_university_department(id: int):
     """Get a specific university department by ID"""
     try:
         collection = get_departments_collection()
-        result = get_one(collection, {"department_id": department_id})
+        result = get_one(collection, {"department_id": id})
         result = Department(**result) if result else None
         return result
     except ValueError:
@@ -78,35 +77,27 @@ async def get_university_department(department_id: str):
             detail="Invalid department ID format"
         )
     except Exception as e:
-        logger.error(f"Error getting university department by ID {department_id}: {e}")
+        logger.error(f"Error getting university department by ID {id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error retrieving university department: {str(e)}"
         )
 
-@uni_department_router.post("/university-departments")
-async def create_university_department(department_data: Department):
+@uni_department_router.post("/")
+async def create_university_department(data: Department):
     """Create a new university department"""
     try:
         collection = get_departments_collection()
-        
-        # Insert into MongoDB
-        result = insert(collection, department_data)
-        
-        # Prepare data for vector database
-        vec_data = department_data.model_dump()
-        vec_data.pop("department_id", None)
-        vec_data.pop("faculty_id", None)
-        vec_data.pop("university_id", None)
-        vec_data.pop("contact", None)
+
+        result = insert(collection, data)
+        data = data.model_dump()
         metadata = {
-            "department_id": department_data.department_id,
-            "university_id": department_data.university_id,
-            "faculty_id": department_data.faculty_id
+            "department_id": data.pop("department_id"),
+            "faculty_id": data.pop("faculty_id"),
+            "university_id": data.pop("university_id"),
+            "reference": data.pop("contact")
         }
-        
-        # Insert into vector database
-        insert_vecdb(QDRANT_UNIVERSITY_DEPARTMENTS, pprint.pformat(vec_data), metadata)
+        insert_vecdb(QDRANT_UNIVERSITY_DEPARTMENTS, pprint.pformat(data), metadata)
         
         return {
             "success": True,
@@ -120,33 +111,27 @@ async def create_university_department(department_data: Department):
             detail=f"Error creating university department: {str(e)}"
         )
 
-@uni_department_router.put("/university-departments")
+@uni_department_router.put("/")
 async def update_university_departments(
     filters: Dict[str, Any],
-    update_data: Dict[str, Any]
+    data: Dict[str, Any]
 ):
     """Update multiple university departments based on filters"""
     try:
         collection = get_departments_collection()
+        result = update(collection, filters, data)
         
-        # Update in MongoDB
-        result = update(collection, filters, update_data)
-        
-        # Update in vector database
         if result.modified_count > 0:
             updated_docs = get_many(collection, filters)
             for doc in updated_docs:
-                vec_data = doc.copy()
-                vec_data.pop("department_id", None)
-                vec_data.pop("faculty_id", None)
-                vec_data.pop("university_id", None)
-                vec_data.pop("contact", None)
+                id = doc.get("department_id")
                 metadata = {
-                    "department_id": doc.get("department_id"),
-                    "university_id": doc.get("university_id"),
-                    "faculty_id": doc.get("faculty_id")
+                    "department_id": doc.pop("department_id"),
+                    "faculty_id": doc.pop("faculty_id"),
+                    "university_id": doc.pop("university_id"),
+                    "reference": doc.pop("contact")
                 }
-                update_vecdb(QDRANT_UNIVERSITY_DEPARTMENTS, {"department_id": doc.get("department_id")}, pprint.pformat(vec_data), metadata)
+                update_vecdb(QDRANT_UNIVERSITY_DEPARTMENTS, {"department_id": id}, pprint.pformat(doc), metadata)
         
         return {
             "success": True,
@@ -161,7 +146,7 @@ async def update_university_departments(
             detail=f"Error bulk updating university departments: {str(e)}"
         )
 
-@uni_department_router.delete("/university-departments")
+@uni_department_router.delete("/")
 async def delete_university_departments(filters: Dict[str, Any]):
     """Delete multiple university departments based on filters"""
     try:
@@ -186,7 +171,7 @@ async def delete_university_departments(filters: Dict[str, Any]):
             detail=f"Error bulk deleting university departments: {str(e)}"
         )
 
-@uni_department_router.get("/university-departments/count")
+@uni_department_router.post("/count")
 async def count_university_departments(filters: Dict[str, Any] = {}):
     """Count all university departments"""
     collection = get_departments_collection()

@@ -1,12 +1,13 @@
 """
 Program CRUD API Router
 
-This module handles program-specific CRUD operations (Program).
+This module handles program CRUD operations.
 """
 
 from fastapi import APIRouter, HTTPException, status
 from typing import List, Optional, Dict, Any
 import logging
+import pprint
 
 # Import actual university models
 from src.models.university import Program
@@ -21,7 +22,15 @@ from src.integrations.internal.mongodb import (
     delete,
     count
 )
-from src.config import MONGODB_UNIVERSITY_PROGRAMS
+
+# Import vector database operations
+from src.integrations.internal.langchain import (
+    insert_vecdb,
+    delete_vecdb,
+    update_vecdb
+)
+
+from src.config import MONGODB_UNIVERSITY_PROGRAMS, QDRANT_UNIVERSITY_PROGRAMS
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -34,14 +43,8 @@ def get_programs_collection():
     db = get_mongodb_database()
     return db[MONGODB_UNIVERSITY_PROGRAMS]
 
-# Health check endpoint
-@program_router.get("/health")
-async def health_check():
-    """Health check for program CRUD operations"""
-    return {"status": "healthy", "service": "program-crud"}
-
 # Program endpoints
-@program_router.get("/programs", response_model=List[Program])
+@program_router.post("/filter", response_model=List[Program])
 async def get_programs(
     skip: int = 0, 
     limit: int = 100, 
@@ -50,7 +53,6 @@ async def get_programs(
     """Get all programs with pagination and filtering"""
     try:
         collection = get_programs_collection()
-        
         results = get_many(collection, filters, offset=skip, limit=limit)
         results = [Program(**result) for result in results]
         return results
@@ -61,27 +63,41 @@ async def get_programs(
             detail=f"Error retrieving programs: {str(e)}"
         )
 
-@program_router.get("/programs/{program_id}", response_model=Program)
-async def get_program(program_id: str):
+@program_router.get("/{id}", response_model=Program)
+async def get_program(id: int):
     """Get a specific program by ID"""
     try:
         collection = get_programs_collection()
-        result = get_one(collection, {"program_id": program_id})
+        result = get_one(collection, {"program_id": id})
         result = Program(**result) if result else None
         return result
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid program ID format"
+        )
     except Exception as e:
-        logger.error(f"Error getting program by ID {program_id}: {e}")
+        logger.error(f"Error getting program by ID {id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error retrieving program: {str(e)}"
         )
 
-@program_router.post("/programs")
-async def create_program(program_data: Program):
+@program_router.post("/")
+async def create_program(data: Program):
     """Create a new program"""
     try:
         collection = get_programs_collection()
-        result = insert(collection, program_data)
+
+        result = insert(collection, data)
+        data = data.model_dump()
+        metadata = {
+            "program_id": data.pop("program_id"),
+            "department_id": data.pop("department_id"),
+            "university_id": data.pop("university_id"),
+            "reference": data.pop("contact")
+        }
+        insert_vecdb(QDRANT_UNIVERSITY_PROGRAMS, pprint.pformat(data), metadata)
         
         return {
             "success": True,
@@ -95,61 +111,27 @@ async def create_program(program_data: Program):
             detail=f"Error creating program: {str(e)}"
         )
 
-@program_router.put("/programs/{program_id}")
-async def update_program(program_id: str, program_data: Program):
-    """Update a program"""
-    # Validate that the program_id in the data matches the URL parameter
-    if program_data.program_id != program_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Program ID mismatch: URL parameter ({program_id}) does not match data program_id ({program_data.program_id})"
-        )
-    
-    try:
-        collection = get_programs_collection()
-        result = update(collection, {"program_id": program_id}, program_data)
-        
-        return {
-            "success": True,
-            "matched_count": result.matched_count,
-            "modified_count": result.modified_count,
-            "acknowledged": result.acknowledged
-        }
-    except Exception as e:
-        logger.error(f"Error updating program {program_id}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error updating program: {str(e)}"
-        )
-
-@program_router.delete("/programs/{program_id}")
-async def delete_program(program_id: str):
-    """Delete a program"""
-    try:
-        collection = get_programs_collection()
-        result = delete(collection, {"program_id": program_id})
-        
-        return {
-            "success": True,
-            "deleted_count": result.deleted_count,
-            "acknowledged": result.acknowledged
-        }
-    except Exception as e:
-        logger.error(f"Error deleting program {program_id}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error deleting program: {str(e)}"
-        )
-
-@program_router.put("/programs")
-async def update_programs_bulk(
+@program_router.put("/")
+async def update_programs(
     filters: Dict[str, Any],
-    update_data: Dict[str, Any]
+    data: Dict[str, Any]
 ):
     """Update multiple programs based on filters"""
     try:
         collection = get_programs_collection()
-        result = update(collection, filters, update_data)
+        result = update(collection, filters, data)
+        
+        if result.modified_count > 0:
+            updated_docs = get_many(collection, filters)
+            for doc in updated_docs:
+                id = doc.get("program_id")
+                metadata = {
+                    "program_id": doc.pop("program_id"),
+                    "department_id": doc.pop("department_id"),
+                    "university_id": doc.pop("university_id"),
+                    "reference": doc.pop("contact")
+                }
+                update_vecdb(QDRANT_UNIVERSITY_PROGRAMS, {"program_id": id}, pprint.pformat(doc), metadata)
         
         return {
             "success": True,
@@ -164,12 +146,18 @@ async def update_programs_bulk(
             detail=f"Error bulk updating programs: {str(e)}"
         )
 
-@program_router.delete("/programs")
-async def delete_programs_bulk(filters: Dict[str, Any]):
+@program_router.delete("/")
+async def delete_programs(filters: Dict[str, Any]):
     """Delete multiple programs based on filters"""
     try:
         collection = get_programs_collection()
+        
+        # Delete from MongoDB
         result = delete(collection, filters)
+        
+        # Delete from vector database
+        if result.deleted_count > 0:
+            delete_vecdb(QDRANT_UNIVERSITY_PROGRAMS, filters)
         
         return {
             "success": True,
@@ -182,3 +170,9 @@ async def delete_programs_bulk(filters: Dict[str, Any]):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error bulk deleting programs: {str(e)}"
         )
+
+@program_router.post("/count")
+async def count_programs(filters: Dict[str, Any] = {}):
+    """Count all programs"""
+    collection = get_programs_collection()
+    return count(collection, filters)
